@@ -13,26 +13,38 @@ Data Engineer | Data Scientist | Machine Learning & Deep Learning | Advanced Ana
   </a>
 </p>
 
+## About Me
+
+I have been learning about data analysis for over three years. I began with data analysis and later expanded into data science, machine learning, and deep learning. As my models grew more sophisticated, I realized the importance of efficiently processing large volumes of data, which led me to study data engineering. Today, I focus on building robust, end-to-end analytical solutions.
+
+* 🌍  I'm based in Medellin, Colombia
+* 🖥️  See my portfolio at [miportafolio](http://app)
+* ✉️  You can contact me at [coremprejair@gmail.com](mailto:coremprejair@gmail.com)
+* 🚀  I'm currently working on [Data Science](http://ds)
+* 🧠  I'm currently learning Python
+* 👥  I'm looking to collaborate on Data Analitys Projects
+* 💬  Ask me about free courses and publicly available data sources
+
 <!--h1 without bottom border-->
-<div id="user-content-toc">
+<!-- <div id="user-content-toc">
   <ul align="center">
     <summary><h2 style="display: inline-block">Technologies That I Know👨🏻‍💻</h2></summary>
   </ul>
 </div>
-<!--tech stack icons-->
+tech stack icons
 <p align="center">
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=git,github,aws,docker,postgres,prisma,dynamodb,figma,firebase,md,mongodb,mysql,postman,py,vscode,sqlite,pycharm,fastapi,bash,azure" />
   </a>
-</p>
+</p> -->
 
 <!--Python Libraries Icons-->
-<p align="center">
+<!-- <p align="center">
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=numpy,pandas,sklearn,tensorflow,selenium" />
     <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="50" height="50"/>
   </a>
-</p>
+</p> -->
 
 ## 🛠️ Skills
 
@@ -46,16 +58,9 @@ Data Engineer | Data Scientist | Machine Learning & Deep Learning | Advanced Ana
   <a href="https://www.mysql.com/">
     <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mysql/mysql-original.svg" alt="SQL" width="50" height="50"/>
   </a>
+    <a href="https://ubuntu.com/">
+    <img src="https://raw.githubusercontent.com/SebastJava/Ubuntu-logo/main/logo-v2025-plain-450x708.svg" alt="Ubuntu" width="50" height="50"/>
+  </a>
 </p>
 
-<div style="display:inline-block; background-color:#333333; padding:10px; border-radius:12px; margin:5px;">
-  <a href="https://powerbi.microsoft.com/">
-    <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="50" height="50"/>
-  </a>
-</div>
-
-<div style="display:inline-block; background-color:#1f6feb; padding:10px; border-radius:12px; margin:5px;">
-  <a href="https://powerbi.microsoft.com/">
-    <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="50" height="50"/>
-  </a>
-</div>
+![visitors](https://visitor-badge.laobi.icu/badge?page_id=JairTrujillo-R&left_color=blue&right_color=green)
