@@ -218,11 +218,9 @@ I have been learning about data analysis for over three years. I began with data
 <div align="center">
 <!-- ![Profile views](https://komarev.com/ghpvc/?username=JairTrujillo-R&color=blueviolet) -->
 
-<a href="https://github.com/JairTrujillo-R">
-  <img alt="Profile views" src="https://img.shields.io/badge/👀%20Profile%20Views-blueviolet?style=for-the-badge"/>
-</a>
+![Profile views](https://komarev.com/ghpvc/?username=JairTrujillo-R&label=PROFILE%20VIEWS&color=007BFF&labelColor=555555&style=flat-square)
 <a href="https://github.com/JairTrujillo-R?tab=followers">
-  <img alt="GitHub followers" src="https://img.shields.io/github/followers/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
+  <img height="24" alt="GitHub followers" src="https://img.shields.io/github/followers/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
 </a>
 <a href="https://github.com/JairTrujillo-R?tab=stars">
   <img alt="GitHub stars" src="https://img.shields.io/github/stars/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
