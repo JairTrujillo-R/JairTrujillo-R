@@ -53,3 +53,9 @@ Data Engineer | Data Scientist | Machine Learning & Deep Learning | Advanced Ana
     <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="50" height="50"/>
   </a>
 </div>
+
+<div style="display:inline-block; background-color:#1f6feb; padding:10px; border-radius:12px; margin:5px;">
+  <a href="https://powerbi.microsoft.com/">
+    <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="50" height="50"/>
+  </a>
+</div>
