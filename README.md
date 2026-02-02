@@ -29,7 +29,7 @@ I have been learning about data analysis for over three years. I began with data
 * 💬  Ask me about free courses and publicly available data sources
 
 
-## 🛠️ Technical Stack
+## <img src="https://media2.giphy.com/media/QssGEmpkyEOhBCb7e1/giphy.gif?cid=ecf05e47a0n3gi1bfqntqmob8g9aid1oyj2wr3ds3mg700bl&rid=giphy.gif" width="30px" style="vertical-align: middle;"> 🛠️ Technical Stack
 
 <details>
 <summary><strong>💻 Languages & Core Technologies</strong></summary>
@@ -216,8 +216,18 @@ I have been learning about data analysis for over three years. I began with data
 ---
 
 <div align="center">
+<!-- ![Profile views](https://komarev.com/ghpvc/?username=JairTrujillo-R&color=blueviolet) -->
 
-![Profile views](https://komarev.com/ghpvc/?username=JairTrujillo-R&color=blueviolet)
+<a href="https://github.com/JairTrujillo-R">
+  <img alt="Profile views" src="https://img.shields.io/badge/👀%20Profile%20Views-blueviolet?style=for-the-badge"/>
+</a>
+<a href="https://github.com/JairTrujillo-R?tab=followers">
+  <img alt="GitHub followers" src="https://img.shields.io/github/followers/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+<a href="https://github.com/JairTrujillo-R?tab=stars">
+  <img alt="GitHub stars" src="https://img.shields.io/github/stars/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+
 
 **Made with ❤️ by [Jair Trujillo](https://github.com/JairTrujillo-R)**
 
