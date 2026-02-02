@@ -206,6 +206,8 @@ I have been learning about data analysis for over three years. I began with data
 
 </details>
 
+<iframe title="Análisis Estratégico Marketplace Tienda" width="600" height="373.5" src="https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2" frameborder="0" allowFullScreen="true"></iframe>
+
 ### 🔗 Contact Me
 
 <div align="center">
