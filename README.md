@@ -48,6 +48,33 @@ tech stack icons
 
 ## 🛠️ Skills
 
+
+### 🤖 Machine Learning & Deep Learning
+- Scikit‑Learn, TensorFlow, Keras, PyTorch
+
+### 🧪 Data Science & Scientific Computing
+- NumPy, Pandas, SciPy
+
+### 📊 Data Visualization
+- Matplotlib, Seaborn, Plotly, Power BI
+
+### 🕸️ Web Scraping & Automatización
+- Selenium, BeautifulSoup
+
+### 🧰 Tools & Dev Environment
+- Git, GitHub, Visual Studio Code
+
+### 🗄️ Bases de Datos
+- SQL, MySQL, PostgreSQL, MongoDB
+
+
+### 🏗️ Big Data & Data Engineering
+- Cloudera, Apache Impala, Hadoop, Hive, Spark
+
+### 💻 Lenguajes de Programación
+- Python, SQL
+
+
 <p align="center">
   <a href="https://powerbi.microsoft.com/">
     <img src="https://raw.githubusercontent.com/microsoft/PowerBI-Icons/main/SVG/Power-BI.svg" alt="Power BI" width="40" height="40"/>
