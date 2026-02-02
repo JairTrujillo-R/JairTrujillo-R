@@ -206,7 +206,12 @@ I have been learning about data analysis for over three years. I began with data
 
 </details>
 
-<iframe title="Análisis Estratégico Marketplace Tienda" width="600" height="373.5" src="https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2" frameborder="0" allowFullScreen="true"></iframe>
+<!-- ## Dashboards
+
+| **Dashboard 1** | **Dashboard 2** |
+|---|---|
+| [![Dashboard 1](informe_1.png)](https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2) | [![Dashboard 2](informe_2.png)](https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2) |
+| _Descripción breve del dashboard 1._ | _Descripción breve del dashboard 2._ | -->
 
 ### 🔗 Contact Me
 
@@ -228,6 +233,7 @@ I have been learning about data analysis for over three years. I began with data
   <img alt="GitHub stars" src="https://img.shields.io/github/stars/JairTrujillo-R?style=for-the-badge&logo=github&logoColor=white"/>
 </a>
 
+<br>
 
 **Made with ❤️ by [Jair Trujillo](https://github.com/JairTrujillo-R)**
 
