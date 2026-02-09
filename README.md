@@ -16,7 +16,7 @@
   </a>
 </p>
 
-## About Me
+## 🙋 About Me
 
 I have been learning about data analysis for over three years. I began with data analysis and later expanded into data science, machine learning, and deep learning. As my models grew more sophisticated, I realized the importance of efficiently processing large volumes of data, which led me to study data engineering. Today, I focus on building robust, end-to-end analytical solutions.
 
@@ -213,7 +213,14 @@ I have been learning about data analysis for over three years. I began with data
 | [![Dashboard 1](informe_1.png)](https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2) | [![Dashboard 2](informe_2.png)](https://app.powerbi.com/view?r=eyJrIjoiN2RmZmE5YjUtMmQzMy00YjhiLWE1NmEtZDg5OTBjNWU2OTA1IiwidCI6ImNhM2YxZDZiLWZkMWYtNDBiMS1iNDFhLTQ4OGI5ODBlOWY3ZiIsImMiOjR9&pageName=ReportSectioncb1ce34056930c0b40d2) |
 | _Descripción breve del dashboard 1._ | _Descripción breve del dashboard 2._ | -->
 
-### 🔗 Contact Me
+## 📊 GitHub Stats
+
+<p align="center">
+  <a href="https://github.com/JairTrujillo-R/beautiful-github-homepage"><picture><img align="" height='150px' src="https://beautiful-github-homepage.vercel.app/api?username=JairTrujillo-R&hide_title=true&show_icons=true&theme=gotham&include_all_commits=true" alt="GitHub Stats" /></picture></a>
+  <a href="https://github.com/JairTrujillo-R/beautiful-github-homepage"><picture><img align="" height='150px' src="https://beautiful-github-homepage.vercel.app/api/top-langs/?username=JairTrujillo-R&hide_title=false&layout=compact&theme=gotham&count_private=true", alt="Top Languajes"/></picture></a>
+</p>
+
+## 🔗 Contact Me
 
 <div align="center">
 <a href="mailto:coremprejair@gmail.com"><img alt="Gmail" src="https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white" /></a>
