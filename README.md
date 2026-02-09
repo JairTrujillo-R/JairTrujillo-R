@@ -214,7 +214,7 @@ I have been learning about data analysis for over three years. I began with data
 | _Descripción breve del dashboard 1._ | _Descripción breve del dashboard 2._ | -->
 
 ## 📊 GitHub Stats
-
+<br>
 <p align="center">
   <a href="https://github.com/JairTrujillo-R/beautiful-github-homepage"><picture><img align="" height='150px' src="https://beautiful-github-homepage.vercel.app/api?username=JairTrujillo-R&hide_title=true&show_icons=true&theme=gotham&include_all_commits=true" alt="GitHub Stats" /></picture></a>
   <a href="https://github.com/JairTrujillo-R/beautiful-github-homepage"><picture><img align="" height='150px' src="https://beautiful-github-homepage.vercel.app/api/top-langs/?username=JairTrujillo-R&hide_title=false&layout=compact&theme=gotham&count_private=true", alt="Top Languajes"/></picture></a>
