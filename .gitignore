@@ -1,2 +1,7 @@
 informe_1.png
 informe_2.png
+data/
+models/
+predictions/
+__pycache__/
+*.pyc
