@@ -2,21 +2,31 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-from .config import DataSource, OFFICIAL_SOURCES
+from .config import DataSource, load_sources
+from .game_catalog import catalog_map
 
 
 class LotteryDataCollector:
     """Extrae datos de fuentes oficiales y los normaliza."""
 
     def __init__(self, sources: list[DataSource] | None = None, timeout: int = 30) -> None:
-        self.sources = sources or OFFICIAL_SOURCES
+        self.sources = sources or load_sources()
         self.timeout = timeout
+        self.logger = logging.getLogger(__name__)
+        self.session = requests.Session()
+        retries = Retry(total=3, backoff_factor=0.7, status_forcelist=[429, 500, 502, 503, 504])
+        self.session.mount("http://", HTTPAdapter(max_retries=retries))
+        self.session.mount("https://", HTTPAdapter(max_retries=retries))
+        self._catalog = catalog_map()
 
     def collect(self, limit: int = 50000) -> pd.DataFrame:
         frames: list[pd.DataFrame] = []
@@ -26,12 +36,25 @@ class LotteryDataCollector:
                 normalized = self._normalize_records(raw_records, source.name)
                 if not normalized.empty:
                     frames.append(normalized)
+                self.logger.info("source_processed", extra={"source": source.name, "rows": len(normalized)})
             except requests.RequestException:
+                self.logger.exception("source_request_error", extra={"source": source.name})
                 continue
 
         if not frames:
             return pd.DataFrame(
-                columns=["draw_date", "strategy", "game", "number", "source", "raw_payload"]
+                columns=[
+                    "draw_date",
+                    "strategy",
+                    "game",
+                    "frequency",
+                    "bet_type",
+                    "min_number",
+                    "max_number",
+                    "number",
+                    "source",
+                    "raw_payload",
+                ]
             )
         return pd.concat(frames, ignore_index=True).sort_values("draw_date")
 
@@ -43,7 +66,7 @@ class LotteryDataCollector:
 
     def _fetch_source(self, source: DataSource, limit: int) -> list[dict[str, Any]]:
         params = {"$limit": limit}
-        response = requests.get(source.url, params=params, timeout=self.timeout)
+        response = self.session.get(source.url, params=params, timeout=self.timeout)
         response.raise_for_status()
         payload = response.json()
 
@@ -87,11 +110,18 @@ class LotteryDataCollector:
             if pd.isna(parsed_date) or pd.isna(parsed_number):
                 continue
 
+            strategy_clean = str(strategy).strip().lower().replace(" ", "_")
+            game_clean = str(game).strip().lower().replace(" ", "_")
+            catalog_item = self._catalog.get((strategy_clean, game_clean))
             normalized_rows.append(
                 {
                     "draw_date": parsed_date.date(),
-                    "strategy": str(strategy).strip(),
-                    "game": str(game).strip(),
+                    "strategy": strategy_clean,
+                    "game": game_clean,
+                    "frequency": catalog_item.frequency if catalog_item else "daily",
+                    "bet_type": catalog_item.bet_type if catalog_item else "numero_directo",
+                    "min_number": catalog_item.min_number if catalog_item else 0,
+                    "max_number": catalog_item.max_number if catalog_item else 9999,
                     "number": int(parsed_number),
                     "source": source_name,
                     "raw_payload": str(record),
@@ -110,10 +140,9 @@ class LotteryDataCollector:
 def build_metadata_snapshot(output_path: str | Path) -> Path:
     snapshot = {
         "created_at_utc": datetime.utcnow().isoformat(),
-        "sources": [asdict(source) for source in OFFICIAL_SOURCES],
+        "sources": [asdict(source) for source in load_sources()],
     }
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame([snapshot]).to_json(path, orient="records", indent=2)
     return path
-

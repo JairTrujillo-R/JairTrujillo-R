@@ -1,0 +1,48 @@
+name: Lottery Daily Cycle
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-daily:
+    runs-on: ${{ vars.LOTTERY_RUNNER_LABEL || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily cycle
+        env:
+          PYTHONPATH: src
+          LOTTERY_SMTP_HOST: ${{ secrets.LOTTERY_SMTP_HOST }}
+          LOTTERY_SMTP_PORT: ${{ secrets.LOTTERY_SMTP_PORT }}
+          LOTTERY_SMTP_USERNAME: ${{ secrets.LOTTERY_SMTP_USERNAME }}
+          LOTTERY_SMTP_PASSWORD: ${{ secrets.LOTTERY_SMTP_PASSWORD }}
+          LOTTERY_SMTP_SENDER: ${{ secrets.LOTTERY_SMTP_SENDER }}
+          LOTTERY_ALERT_RECIPIENT: ${{ secrets.LOTTERY_ALERT_RECIPIENT }}
+        run: |
+          python -m lottery_pipeline init-db --db-path data/lottery.db
+          python -m lottery_pipeline run-cycle --db-path data/lottery.db --frequency daily --limit 50000 --min-rows 30
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lottery-daily-artifacts
+          path: |
+            data/
+            models/
+            predictions/
