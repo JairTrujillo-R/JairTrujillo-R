@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "15 5 * * *"
   workflow_dispatch:
+    inputs:
+      send_test_email:
+        description: "Enviar correo SMTP de prueba a coremprejair@gmail.com"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   run-daily:
@@ -48,7 +54,30 @@ jobs:
           restore-keys: |
             lottery-pipeline-state-
 
+      - name: Show historical coverage
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run python -c "import sqlite3; c=sqlite3.connect('data/lottery.db'); print(c.execute('SELECT COUNT(*), MIN(draw_date), MAX(draw_date) FROM official_results').fetchone())"
+
+      - name: Validate official API schema
+        run: |
+          uv run python -c 'import requests; r=requests.get("https://www.datos.gov.co/resource/i3kx-3zps.json", params={"$limit": 1}, timeout=30); r.raise_for_status(); row=r.json()[0]; print(sorted(row)); print({k: row[k] for k in row if k in {"fecha","loter_a","n_mero","numero","tipo_de_premio"}})'
+
+      - name: Send test email
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test_email }}
+        env:
+          PYTHONPATH: src
+          LOTTERY_SMTP_HOST: ${{ secrets.LOTTERY_SMTP_HOST }}
+          LOTTERY_SMTP_PORT: ${{ secrets.LOTTERY_SMTP_PORT }}
+          LOTTERY_SMTP_USERNAME: ${{ secrets.LOTTERY_SMTP_USERNAME }}
+          LOTTERY_SMTP_PASSWORD: ${{ secrets.LOTTERY_SMTP_PASSWORD }}
+          LOTTERY_SMTP_SENDER: ${{ secrets.LOTTERY_SMTP_SENDER }}
+          LOTTERY_ALERT_RECIPIENT: coremprejair@gmail.com
+        run: uv run python -m lottery_pipeline test-email --recipient coremprejair@gmail.com
+
       - name: Run daily cycle
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.send_test_email }}
         env:
           PYTHONPATH: src
           LOTTERY_SMTP_HOST: ${{ secrets.LOTTERY_SMTP_HOST }}

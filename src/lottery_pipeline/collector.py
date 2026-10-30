@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,7 +34,7 @@ class LotteryDataCollector:
         for source in self.sources:
             try:
                 raw_records = self._fetch_source(source, limit=limit)
-                normalized = self._normalize_records(raw_records, source.name)
+                normalized = self._normalize_records(raw_records, source)
                 if not normalized.empty:
                     frames.append(normalized)
                 self.logger.info(
@@ -90,20 +91,48 @@ class LotteryDataCollector:
                 return record[key]
         return default
 
-    def _normalize_records(self, records: list[dict[str, Any]], source_name: str) -> pd.DataFrame:
+    @staticmethod
+    def _clean_label(value: Any) -> str:
+        normalized = unicodedata.normalize("NFKD", str(value))
+        ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+        return "_".join(ascii_value.strip().lower().split())
+
+    def _normalize_records(self, records: list[dict[str, Any]], source: DataSource) -> pd.DataFrame:
         normalized_rows = []
         for record in records:
             draw_date = self._pick_value(
                 record,
-                ["fecha", "fecha_sorteo", "draw_date", "fecharesultado", "f_sorteo", "date"],
+                [
+                    "fecha",
+                    "fecha_sorteo",
+                    "fecha_del_sorteo",
+                    "draw_date",
+                    "fecharesultado",
+                    "f_sorteo",
+                    "date",
+                ],
             )
             game = self._pick_value(
-                record, ["juego", "loteria", "nombre_juego", "game"], "desconocido"
+                record,
+                ["juego", "loteria", "loter_a", "nombre_loteria", "nombre_juego", "game"],
+                source.default_game or "desconocido",
             )
-            strategy = self._pick_value(record, ["modalidad", "tipo_juego", "strategy"], game)
+            strategy = self._pick_value(
+                record,
+                ["modalidad", "tipo_juego", "tipo_de_juego", "strategy"],
+                source.default_strategy or game,
+            )
             number = self._pick_value(
                 record,
-                ["numero", "numero_ganador", "resultado", "winning_number", "cifras", "ganador"],
+                [
+                    "numero",
+                    "n_mero",
+                    "numero_ganador",
+                    "resultado",
+                    "winning_number",
+                    "cifras",
+                    "ganador",
+                ],
             )
 
             if draw_date is None or number is None:
@@ -114,8 +143,8 @@ class LotteryDataCollector:
             if pd.isna(parsed_date) or pd.isna(parsed_number):
                 continue
 
-            strategy_clean = str(strategy).strip().lower().replace(" ", "_")
-            game_clean = str(game).strip().lower().replace(" ", "_")
+            strategy_clean = self._clean_label(strategy)
+            game_clean = self._clean_label(game)
             catalog_item = self._catalog.get((strategy_clean, game_clean))
             normalized_rows.append(
                 {
@@ -127,7 +156,7 @@ class LotteryDataCollector:
                     "min_number": catalog_item.min_number if catalog_item else 0,
                     "max_number": catalog_item.max_number if catalog_item else 9999,
                     "number": int(parsed_number),
-                    "source": source_name,
+                    "source": source.name,
                     "raw_payload": str(record),
                 }
             )

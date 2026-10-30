@@ -1,6 +1,10 @@
 informe_1.png
 informe_2.png
-data/
+data/*
+!data/lottery.db
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
 models/
 predictions/
 __pycache__/

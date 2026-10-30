@@ -6,9 +6,10 @@ from pathlib import Path
 import pandas as pd
 
 from lottery_pipeline.collector import LotteryDataCollector
-from lottery_pipeline.config import DataSource
+from lottery_pipeline.config import DataSource, load_sources
 from lottery_pipeline.db import LotteryRepository
 from lottery_pipeline.modeling import LotteryForecaster
+from lottery_pipeline.notifier import EmailNotifier, SMTPSettings
 
 
 def build_training_data(rows: int = 16) -> pd.DataFrame:
@@ -28,7 +29,16 @@ def build_training_data(rows: int = 16) -> pd.DataFrame:
 
 
 def test_collector_normalizes_official_record() -> None:
-    collector = LotteryDataCollector(sources=[DataSource(name="test", url="https://example.test")])
+    collector = LotteryDataCollector(
+        sources=[
+            DataSource(
+                name="test",
+                url="https://example.test",
+                default_strategy="loteria",
+                default_game="loteria_medellin",
+            )
+        ]
+    )
 
     result = collector._normalize_records(
         [
@@ -39,13 +49,45 @@ def test_collector_normalizes_official_record() -> None:
                 "numero_ganador": "0042",
             }
         ],
-        "test",
+        collector.sources[0],
     )
 
     assert result.iloc[0]["draw_date"] == pd.Timestamp("2026-01-02")
     assert result.iloc[0]["strategy"] == "chance"
     assert result.iloc[0]["game"] == "chance_nacional"
     assert result.iloc[0]["number"] == 42
+
+
+def test_default_source_is_official_lottery_results_dataset() -> None:
+    source = load_sources()[0]
+
+    assert source.url.endswith("/resource/i3kx-3zps.json")
+
+
+def test_collector_normalizes_open_data_lottery_fields() -> None:
+    source = DataSource(
+        name="datos_abiertos_colombia_loterias",
+        url="https://www.datos.gov.co/resource/i3kx-3zps.json",
+        default_strategy="loteria",
+    )
+    collector = LotteryDataCollector(sources=[source])
+
+    result = collector._normalize_records(
+        [
+            {
+                "fecha": "2026-10-09",
+                "loter_a": "Lotería de Medellín",
+                "n_mero": "1234",
+                "sorteo": "5000",
+            }
+        ],
+        source,
+    )
+
+    assert len(result) == 1
+    assert result.iloc[0]["strategy"] == "loteria"
+    assert result.iloc[0]["game"] == "loteria_de_medellin"
+    assert result.iloc[0]["number"] == 1234
 
 
 def test_forecaster_trains_and_returns_bounded_prediction() -> None:
@@ -171,3 +213,35 @@ def test_end_to_end_training_persistence_and_evaluation(tmp_path: Path) -> None:
     assert predictions.iloc[0]["top_candidates"]
     assert len(evaluations) == 1
     assert bool(evaluations.iloc[0]["is_hit"])
+
+
+def test_email_notifier_sends_message_without_network(monkeypatch) -> None:
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            sent["connection"] = (host, port, timeout)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def starttls(self):
+            sent["tls"] = True
+
+        def login(self, username, password):
+            sent["login"] = (username, password)
+
+        def send_message(self, message):
+            sent["message"] = message
+
+    monkeypatch.setattr("lottery_pipeline.notifier.smtplib.SMTP", FakeSMTP)
+    settings = SMTPSettings(
+        "smtp.example.com", 587, "user", "secret", "from@example.com", "to@example.com"
+    )
+
+    assert EmailNotifier(settings).send_hit_alert("Subject", "Body") == "sent"
+    assert sent["connection"] == ("smtp.example.com", 587, 30)
+    assert sent["message"]["To"] == "to@example.com"

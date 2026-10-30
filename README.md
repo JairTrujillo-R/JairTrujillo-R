@@ -44,6 +44,13 @@ Este repositorio ahora incluye un pipeline base en Python para:
 - `/src/lottery_pipeline/modeling.py`: entrenamiento y predicción.
 - `/src/lottery_pipeline/cli.py`: interfaz de línea de comandos.
 
+La ingesta usa la API Socrata de Datos Abiertos (`/resource/{dataset}.json`).
+La fuente configurada es el dataset oficial **Resultados de los sorteos
+loterías** (`i3kx-3zps`). Sus campos se detectan de forma flexible y se
+normalizan al esquema interno. Si Datos Abiertos cambia el identificador, se
+puede reemplazar la fuente mediante `LOTTERY_SOURCES_JSON` sin modificar el
+código.
+
 ### Uso rápido
 
 ```bash
@@ -62,6 +69,11 @@ PYTHONPATH=src uv run python -m lottery_pipeline train --min-rows 30
 - `data/raw/metadata.json`: metadatos de extracción.
 - `models/lottery_models.pkl`: modelos entrenados por estrategia/juego.
 - `predictions/daily_predictions.csv`: predicción para la fecha objetivo.
+
+El repositorio incluye `data/lottery.db` como semilla histórica. La copia
+actual contiene 1.024 resultados de Lotería de Medellín entre 2007-01-05 y
+2026-10-09. El workflow diario restaura y actualiza esa base mediante cache;
+los nuevos resultados se consolidan con `ON CONFLICT`, sin borrar el histórico.
 
 ### Datos, frecuencia y aprendizaje
 
