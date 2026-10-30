@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import datetime, timezone
 import logging
+from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,9 @@ class LotteryDataCollector:
                 normalized = self._normalize_records(raw_records, source.name)
                 if not normalized.empty:
                     frames.append(normalized)
-                self.logger.info("source_processed", extra={"source": source.name, "rows": len(normalized)})
+                self.logger.info(
+                    "source_processed", extra={"source": source.name, "rows": len(normalized)}
+                )
             except requests.RequestException:
                 self.logger.exception("source_request_error", extra={"source": source.name})
                 continue
@@ -95,7 +97,9 @@ class LotteryDataCollector:
                 record,
                 ["fecha", "fecha_sorteo", "draw_date", "fecharesultado", "f_sorteo", "date"],
             )
-            game = self._pick_value(record, ["juego", "loteria", "nombre_juego", "game"], "desconocido")
+            game = self._pick_value(
+                record, ["juego", "loteria", "nombre_juego", "game"], "desconocido"
+            )
             strategy = self._pick_value(record, ["modalidad", "tipo_juego", "strategy"], game)
             number = self._pick_value(
                 record,
@@ -139,7 +143,7 @@ class LotteryDataCollector:
 
 def build_metadata_snapshot(output_path: str | Path) -> Path:
     snapshot = {
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "created_at_utc": datetime.now(UTC).isoformat(),
         "sources": [asdict(source) for source in load_sources()],
     }
     path = Path(output_path)

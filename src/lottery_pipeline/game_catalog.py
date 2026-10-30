@@ -81,4 +81,3 @@ GAME_CATALOG: list[GameDefinition] = [
 
 def catalog_map() -> dict[tuple[str, str], GameDefinition]:
     return {(item.strategy.lower(), item.game.lower()): item for item in GAME_CATALOG}
-

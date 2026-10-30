@@ -47,13 +47,13 @@ Este repositorio ahora incluye un pipeline base en Python para:
 ### Uso rápido
 
 ```bash
-pip install -r requirements.txt
+uv sync --group dev
 
 # 1) Extraer datos
-PYTHONPATH=src python -m lottery_pipeline collect --limit 50000
+PYTHONPATH=src uv run python -m lottery_pipeline collect --limit 50000
 
 # 2) Entrenar y predecir
-PYTHONPATH=src python -m lottery_pipeline train --min-rows 30
+PYTHONPATH=src uv run python -m lottery_pipeline train --min-rows 30
 ```
 
 ### Archivos de salida
@@ -62,6 +62,21 @@ PYTHONPATH=src python -m lottery_pipeline train --min-rows 30
 - `data/raw/metadata.json`: metadatos de extracción.
 - `models/lottery_models.pkl`: modelos entrenados por estrategia/juego.
 - `predictions/daily_predictions.csv`: predicción para la fecha objetivo.
+
+### Datos, frecuencia y aprendizaje
+
+Cada modelo se entrena por separado para cada combinación `strategy/game`, usando
+el histórico normalizado de resultados de ese juego: fecha, número ganador,
+rezagos (`lag1`, `lag7`), media móvil de siete sorteos y variables de calendario.
+Los juegos diarios, semanales y mensuales no se mezclan. La predicción solo se
+genera cuando la fecha objetivo coincide con el patrón de sorteos observado.
+
+El modelo actual es supervisado (`RandomForestRegressor` con suavizado
+histórico), no aprendizaje reforzado. Las evaluaciones calculan acierto,
+`hit@3`, `hit@5` y Brier por predicción; sirven para monitorear cada lotería,
+pero no se usan como una falsa señal de recompensa. En sorteos aleatorios no
+existe una acción controlable ni una recompensa estable que justifique afirmar
+que un agente puede aprender una política ganadora.
 
 
 ## <img src="https://media2.giphy.com/media/QssGEmpkyEOhBCb7e1/giphy.gif?cid=ecf05e47a0n3gi1bfqntqmob8g9aid1oyj2wr3ds3mg700bl&rid=giphy.gif" width="30px" style="vertical-align: middle;"> 🛠️ Technical Stack

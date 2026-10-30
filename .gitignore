@@ -5,3 +5,4 @@ models/
 predictions/
 __pycache__/
 *.pyc
+.venv/

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import math
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import pickle
-import math
 
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -24,10 +24,20 @@ class TrainedModel:
     latest_number: int
     latest_lag7: float
     latest_mean7: float
+    frequency: str
+    draw_weekdays: tuple[int, ...]
+    draw_month_days: tuple[int, ...]
 
 
 class LotteryForecaster:
-    """Entrena modelos por estrategia y juego para predecir el siguiente sorteo."""
+    """Entrena modelos supervisados independientes para cada estrategia y juego.
+
+    Este componente no implementa aprendizaje reforzado: los sorteos no ofrecen
+    un estado controlable ni una recompensa que permita aprender una política
+    con ventaja estadística demostrable. Las evaluaciones se almacenan para
+    medir el rendimiento por juego y evitar presentar esas métricas como
+    aprendizaje automático en línea.
+    """
 
     def __init__(self, min_rows: int = 30, random_state: int = 42) -> None:
         self.min_rows = min_rows
@@ -53,8 +63,12 @@ class LotteryForecaster:
             model.fit(X, y)
 
             last_row = features_df.iloc[-1]
-            min_number = int(pd.to_numeric(group.get("min_number", pd.Series([0])), errors="coerce").min())
-            max_number = int(pd.to_numeric(group.get("max_number", pd.Series([9999])), errors="coerce").max())
+            min_number = int(
+                pd.to_numeric(group.get("min_number", pd.Series([0])), errors="coerce").min()
+            )
+            max_number = int(
+                pd.to_numeric(group.get("max_number", pd.Series([9999])), errors="coerce").max()
+            )
             min_number = max(0, min_number)
             max_number = max(min_number, max_number)
             frequency_counts = (
@@ -81,6 +95,13 @@ class LotteryForecaster:
                 latest_number=int(last_row["number"]),
                 latest_lag7=float(last_row["lag7"]),
                 latest_mean7=float(last_row["mean7"]),
+                frequency=str(group["frequency"].mode().iloc[0])
+                if "frequency" in group and not group["frequency"].mode().empty
+                else "daily",
+                draw_weekdays=tuple(
+                    sorted(pd.to_datetime(group["draw_date"]).dt.day_of_week.unique())
+                ),
+                draw_month_days=tuple(sorted(pd.to_datetime(group["draw_date"]).dt.day.unique())),
             )
 
         return models
@@ -106,10 +127,12 @@ class LotteryForecaster:
         target_date = pd.to_datetime(prediction_date or pd.Timestamp.utcnow().normalize())
         rows: list[dict[str, Any]] = []
         for trained in models.values():
+            if not self._is_scheduled_date(trained, target_date):
+                continue
             features = pd.DataFrame(
                 [
                     {
-                        "day_of_week": target_date.dayofweek,
+                        "day_of_week": target_date.day_of_week,
                         "day_of_month": target_date.day,
                         "month": target_date.month,
                         "lag1": trained.latest_number,
@@ -120,7 +143,9 @@ class LotteryForecaster:
             )
             prediction = float(trained.model.predict(features)[0])
             probabilities = self._build_probability_distribution(trained, prediction)
-            top_candidates = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[:top_k]
+            top_candidates = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[
+                :top_k
+            ]
             best_number, best_probability = top_candidates[0]
             rows.append(
                 {
@@ -135,7 +160,29 @@ class LotteryForecaster:
                     ],
                 }
             )
-        return pd.DataFrame(rows).sort_values(["strategy", "game"])
+        predictions = pd.DataFrame(rows)
+        if predictions.empty:
+            return pd.DataFrame(
+                columns=[
+                    "prediction_date",
+                    "strategy",
+                    "game",
+                    "predicted_number",
+                    "predicted_probability",
+                    "top_candidates",
+                ]
+            )
+        return predictions.sort_values(["strategy", "game"])
+
+    @staticmethod
+    def _is_scheduled_date(trained: TrainedModel, target_date: pd.Timestamp) -> bool:
+        if trained.frequency == "daily":
+            return True
+        if trained.frequency == "weekly":
+            return target_date.day_of_week in trained.draw_weekdays
+        if trained.frequency == "monthly":
+            return target_date.day in trained.draw_month_days
+        return True
 
     @staticmethod
     def save_models(models: dict[tuple[str, str], TrainedModel], output_path: str | Path) -> Path:
@@ -151,8 +198,10 @@ class LotteryForecaster:
         data["draw_date"] = pd.to_datetime(data["draw_date"])
         data = data.sort_values("draw_date")
         data["min_number"] = pd.to_numeric(data.get("min_number", 0), errors="coerce").fillna(0)
-        data["max_number"] = pd.to_numeric(data.get("max_number", 9999), errors="coerce").fillna(9999)
-        data["day_of_week"] = data["draw_date"].dt.dayofweek
+        data["max_number"] = pd.to_numeric(data.get("max_number", 9999), errors="coerce").fillna(
+            9999
+        )
+        data["day_of_week"] = data["draw_date"].dt.day_of_week
         data["day_of_month"] = data["draw_date"].dt.day
         data["month"] = data["draw_date"].dt.month
         data["lag1"] = data["number"].shift(1)

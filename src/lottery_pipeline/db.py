@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import datetime, timezone
 import json
 import sqlite3
+from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -129,7 +129,8 @@ class LotteryRepository:
             self.conn.execute(
                 """
                 INSERT INTO game_catalog(
-                    strategy, game, frequency, draw_time_local, timezone, bet_type, min_number, max_number
+                    strategy, game, frequency, draw_time_local, timezone, bet_type,
+                    min_number, max_number
                 ) VALUES(?,?,?,?,?,?,?,?)
                 ON CONFLICT(strategy, game) DO UPDATE SET
                     frequency=excluded.frequency,
@@ -154,7 +155,7 @@ class LotteryRepository:
 
     def save_official_results(self, df: pd.DataFrame) -> int:
         inserted = 0
-        utc_now = datetime.now(timezone.utc).isoformat()
+        utc_now = datetime.now(UTC).isoformat()
         for _, row in df.iterrows():
             cursor = self.conn.execute(
                 """
@@ -192,13 +193,15 @@ class LotteryRepository:
     ) -> int:
         cursor = self.conn.execute(
             """
-            INSERT INTO model_versions(strategy, game, trained_at_utc, model_path, data_rows, algorithm, features)
+            INSERT INTO model_versions(
+                strategy, game, trained_at_utc, model_path, data_rows, algorithm, features
+            )
             VALUES(?,?,?,?,?,?,?)
             """,
             (
                 strategy,
                 game,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 str(model_path),
                 int(data_rows),
                 algorithm,
@@ -208,9 +211,11 @@ class LotteryRepository:
         self.conn.commit()
         return int(cursor.lastrowid)
 
-    def save_predictions(self, predictions: pd.DataFrame, model_version_map: dict[tuple[str, str], int]) -> int:
+    def save_predictions(
+        self, predictions: pd.DataFrame, model_version_map: dict[tuple[str, str], int]
+    ) -> int:
         inserted = 0
-        utc_now = datetime.now(timezone.utc).isoformat()
+        utc_now = datetime.now(UTC).isoformat()
         for _, row in predictions.iterrows():
             model_version_id = model_version_map.get((str(row["strategy"]), str(row["game"])))
             top_candidates_json = json.dumps(row["top_candidates"])
@@ -245,7 +250,7 @@ class LotteryRepository:
         return inserted
 
     def evaluate_due_predictions(self, evaluation_date: str | None = None) -> pd.DataFrame:
-        date_filter = evaluation_date or datetime.now(timezone.utc).date().isoformat()
+        date_filter = evaluation_date or datetime.now(UTC).date().isoformat()
         rows = self.conn.execute(
             """
             SELECT p.id AS prediction_id, p.prediction_date, p.strategy, p.game, p.predicted_number,
@@ -262,7 +267,7 @@ class LotteryRepository:
         ).fetchall()
 
         evaluations: list[dict[str, Any]] = []
-        utc_now = datetime.now(timezone.utc).isoformat()
+        utc_now = datetime.now(UTC).isoformat()
         for row in rows:
             top_candidates = json.loads(row["top_candidates_json"])
             predicted_number = int(row["predicted_number"])
@@ -279,7 +284,8 @@ class LotteryRepository:
             self.conn.execute(
                 """
                 INSERT OR REPLACE INTO evaluations(
-                    prediction_id, draw_date, actual_number, is_hit, brier_score, hit_at_3, hit_at_5, evaluated_at_utc
+                    prediction_id, draw_date, actual_number, is_hit, brier_score,
+                    hit_at_3, hit_at_5, evaluated_at_utc
                 ) VALUES(?,?,?,?,?,?,?,?)
                 """,
                 (
@@ -293,7 +299,9 @@ class LotteryRepository:
                     utc_now,
                 ),
             )
-            self.conn.execute("UPDATE predictions SET status='evaluated' WHERE id=?", (int(row["prediction_id"]),))
+            self.conn.execute(
+                "UPDATE predictions SET status='evaluated' WHERE id=?", (int(row["prediction_id"]),)
+            )
             evaluations.append(
                 {
                     "prediction_id": int(row["prediction_id"]),
@@ -315,7 +323,8 @@ class LotteryRepository:
     def pending_hit_alerts(self) -> list[sqlite3.Row]:
         return self.conn.execute(
             """
-            SELECT p.id AS prediction_id, p.prediction_date, p.strategy, p.game, p.predicted_number, e.actual_number
+            SELECT p.id AS prediction_id, p.prediction_date, p.strategy, p.game,
+                   p.predicted_number, e.actual_number
             FROM predictions p
             JOIN evaluations e ON e.prediction_id = p.id
             LEFT JOIN alerts a
@@ -341,7 +350,7 @@ class LotteryRepository:
                 recipient,
                 status,
                 message,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
         self.conn.commit()
