@@ -28,6 +28,41 @@ I have been learning about data analysis for over three years. I began with data
 * 👥  I'm looking to collaborate on **Analytics** and **Data Science** projects
 * 💬  Ask me about free courses and publicly available data sources
 
+## 🎰 Proyecto: Predicción de juegos de azar (Colombia)
+
+Este repositorio ahora incluye un pipeline base en Python para:
+
+1. **Extraer datos** desde una fuente oficial de datos abiertos en Colombia.
+2. **Normalizar resultados** en un esquema común (`draw_date`, `strategy`, `game`, `number`).
+3. **Entrenar modelos por estrategia/juego**.
+4. **Generar predicción diaria** por cada estrategia disponible.
+
+### Estructura agregada
+
+- `/src/lottery_pipeline/config.py`: configuración de fuentes oficiales.
+- `/src/lottery_pipeline/collector.py`: ingesta y normalización.
+- `/src/lottery_pipeline/modeling.py`: entrenamiento y predicción.
+- `/src/lottery_pipeline/cli.py`: interfaz de línea de comandos.
+
+### Uso rápido
+
+```bash
+pip install -r requirements.txt
+
+# 1) Extraer datos
+PYTHONPATH=src python -m lottery_pipeline collect --limit 50000
+
+# 2) Entrenar y predecir
+PYTHONPATH=src python -m lottery_pipeline train --min-rows 30
+```
+
+### Archivos de salida
+
+- `data/raw/lottery_results.csv`: resultados normalizados.
+- `data/raw/metadata.json`: metadatos de extracción.
+- `models/lottery_models.pkl`: modelos entrenados por estrategia/juego.
+- `predictions/daily_predictions.csv`: predicción para la fecha objetivo.
+
 
 ## <img src="https://media2.giphy.com/media/QssGEmpkyEOhBCb7e1/giphy.gif?cid=ecf05e47a0n3gi1bfqntqmob8g9aid1oyj2wr3ds3mg700bl&rid=giphy.gif" width="30px" style="vertical-align: middle;"> 🛠️ Technical Stack
 
