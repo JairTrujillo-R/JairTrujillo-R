@@ -19,7 +19,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.16"
 
       - name: Install dependencies
         uses: astral-sh/setup-uv@v6

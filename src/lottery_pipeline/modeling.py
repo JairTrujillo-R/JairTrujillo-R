@@ -30,7 +30,14 @@ class TrainedModel:
 
 
 class LotteryForecaster:
-    """Entrena modelos por estrategia y juego para predecir el siguiente sorteo."""
+    """Entrena modelos supervisados independientes para cada estrategia y juego.
+
+    Este componente no implementa aprendizaje reforzado: los sorteos no ofrecen
+    un estado controlable ni una recompensa que permita aprender una política
+    con ventaja estadística demostrable. Las evaluaciones se almacenan para
+    medir el rendimiento por juego y evitar presentar esas métricas como
+    aprendizaje automático en línea.
+    """
 
     def __init__(self, min_rows: int = 30, random_state: int = 42) -> None:
         self.min_rows = min_rows

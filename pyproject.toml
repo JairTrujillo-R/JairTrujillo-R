@@ -7,7 +7,7 @@ name = "lottery-pipeline"
 version = "0.1.0"
 description = "Pipeline de ingesta, modelado y evaluación de loterías colombianas."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.16"
 dependencies = [
     "pandas>=2.2.0",
     "requests>=2.32.0",
@@ -22,7 +22,9 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+# Ruff does not expose a py316 target yet; keep syntax checks at the latest
+# supported target while CI runs the application on Python 3.16.
+target-version = "py315"
 
 [tool.ruff.format]
 quote-style = "double"
