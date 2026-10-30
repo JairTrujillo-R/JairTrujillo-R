@@ -24,6 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Run automated tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q
+
       - name: Restore pipeline state
         uses: actions/cache@v4
         with:

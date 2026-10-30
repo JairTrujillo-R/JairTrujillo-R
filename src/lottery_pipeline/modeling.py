@@ -109,7 +109,7 @@ class LotteryForecaster:
             features = pd.DataFrame(
                 [
                     {
-                        "day_of_week": target_date.dayofweek,
+                        "day_of_week": target_date.day_of_week,
                         "day_of_month": target_date.day,
                         "month": target_date.month,
                         "lag1": trained.latest_number,
@@ -152,7 +152,7 @@ class LotteryForecaster:
         data = data.sort_values("draw_date")
         data["min_number"] = pd.to_numeric(data.get("min_number", 0), errors="coerce").fillna(0)
         data["max_number"] = pd.to_numeric(data.get("max_number", 9999), errors="coerce").fillna(9999)
-        data["day_of_week"] = data["draw_date"].dt.dayofweek
+        data["day_of_week"] = data["draw_date"].dt.day_of_week
         data["day_of_month"] = data["draw_date"].dt.day
         data["month"] = data["draw_date"].dt.month
         data["lag1"] = data["number"].shift(1)
