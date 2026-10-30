@@ -9,6 +9,7 @@ from lottery_pipeline.collector import LotteryDataCollector
 from lottery_pipeline.config import DataSource
 from lottery_pipeline.db import LotteryRepository
 from lottery_pipeline.modeling import LotteryForecaster
+from lottery_pipeline.notifier import EmailNotifier, SMTPSettings
 
 
 def build_training_data(rows: int = 16) -> pd.DataFrame:
@@ -171,3 +172,35 @@ def test_end_to_end_training_persistence_and_evaluation(tmp_path: Path) -> None:
     assert predictions.iloc[0]["top_candidates"]
     assert len(evaluations) == 1
     assert bool(evaluations.iloc[0]["is_hit"])
+
+
+def test_email_notifier_sends_message_without_network(monkeypatch) -> None:
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            sent["connection"] = (host, port, timeout)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def starttls(self):
+            sent["tls"] = True
+
+        def login(self, username, password):
+            sent["login"] = (username, password)
+
+        def send_message(self, message):
+            sent["message"] = message
+
+    monkeypatch.setattr("lottery_pipeline.notifier.smtplib.SMTP", FakeSMTP)
+    settings = SMTPSettings(
+        "smtp.example.com", 587, "user", "secret", "from@example.com", "to@example.com"
+    )
+
+    assert EmailNotifier(settings).send_hit_alert("Subject", "Body") == "sent"
+    assert sent["connection"] == ("smtp.example.com", 587, 30)
+    assert sent["message"]["To"] == "to@example.com"

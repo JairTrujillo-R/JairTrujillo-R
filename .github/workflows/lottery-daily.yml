@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "15 5 * * *"
   workflow_dispatch:
+    inputs:
+      send_test_email:
+        description: "Enviar correo SMTP de prueba a coremprejair@gmail.com"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   run-daily:
@@ -60,6 +66,18 @@ jobs:
         run: |
           uv run python -m lottery_pipeline init-db --db-path data/lottery.db
           uv run python -m lottery_pipeline run-cycle --db-path data/lottery.db --frequency all --limit 50000 --min-rows 30
+
+      - name: Send test email
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test_email }}
+        env:
+          PYTHONPATH: src
+          LOTTERY_SMTP_HOST: ${{ secrets.LOTTERY_SMTP_HOST }}
+          LOTTERY_SMTP_PORT: ${{ secrets.LOTTERY_SMTP_PORT }}
+          LOTTERY_SMTP_USERNAME: ${{ secrets.LOTTERY_SMTP_USERNAME }}
+          LOTTERY_SMTP_PASSWORD: ${{ secrets.LOTTERY_SMTP_PASSWORD }}
+          LOTTERY_SMTP_SENDER: ${{ secrets.LOTTERY_SMTP_SENDER }}
+          LOTTERY_ALERT_RECIPIENT: coremprejair@gmail.com
+        run: uv run python -m lottery_pipeline test-email --recipient coremprejair@gmail.com
 
       - name: Upload artifacts
         if: always()

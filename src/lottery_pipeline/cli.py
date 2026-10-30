@@ -131,6 +131,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ruta de la base de datos SQLite.",
     )
 
+    test_email_parser = subparsers.add_parser(
+        "test-email", help="Envía un correo de prueba usando la configuración SMTP."
+    )
+    test_email_parser.add_argument(
+        "--recipient",
+        type=str,
+        default=None,
+        help="Destinatario de la prueba. Por defecto usa LOTTERY_ALERT_RECIPIENT.",
+    )
+
     cycle_parser = subparsers.add_parser(
         "run-cycle", help="Ejecuta ciclo completo: collect -> train -> evaluate -> notify."
     )
@@ -302,6 +312,35 @@ def notify_command(db_path: Path) -> int:
     return sent
 
 
+def test_email_command(recipient: str | None) -> None:
+    settings = SMTPSettings.from_env()
+    target = recipient or settings.recipient
+    if not settings.is_complete():
+        raise RuntimeError("Credenciales SMTP incompletas; no se puede enviar el correo de prueba.")
+    if not target:
+        raise RuntimeError("Debe indicar un destinatario para el correo de prueba.")
+
+    notifier = EmailNotifier(
+        SMTPSettings(
+            host=settings.host,
+            port=settings.port,
+            username=settings.username,
+            password=settings.password,
+            sender=settings.sender,
+            recipient=target,
+            use_tls=settings.use_tls,
+        )
+    )
+    notifier.send_hit_alert(
+        subject="Prueba de alertas - Lottery Pipeline",
+        body=(
+            "Este es un correo de prueba del pipeline de loterías.\n"
+            "La configuración SMTP de producción respondió correctamente."
+        ),
+    )
+    print(f"Correo de prueba enviado a: {target}")
+
+
 def run_cycle_command(
     db_path: Path, limit: int, frequency: str, prediction_date: str | None, min_rows: int
 ) -> None:
@@ -366,6 +405,10 @@ def main() -> None:
 
     if args.command == "notify":
         notify_command(db_path=args.db_path)
+        return
+
+    if args.command == "test-email":
+        test_email_command(recipient=args.recipient)
         return
 
     run_cycle_command(
