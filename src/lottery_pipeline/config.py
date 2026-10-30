@@ -19,10 +19,8 @@ class DataSource:
 OFFICIAL_SOURCES: list[DataSource] = [
     DataSource(
         name="datos_abiertos_colombia_loterias",
-        url="https://www.datos.gov.co/resource/4w3i-wxax.json",
+        url="https://www.datos.gov.co/resource/i3kx-3zps.json",
         records_key=None,
-        default_strategy="loteria",
-        default_game="loteria_medellin",
     ),
     DataSource(
         name="datos_abiertos_colombia_chance",

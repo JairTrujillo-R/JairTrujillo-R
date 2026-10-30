@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from lottery_pipeline.collector import LotteryDataCollector
-from lottery_pipeline.config import DataSource
+from lottery_pipeline.config import DataSource, load_sources
 from lottery_pipeline.db import LotteryRepository
 from lottery_pipeline.modeling import LotteryForecaster
 from lottery_pipeline.notifier import EmailNotifier, SMTPSettings
@@ -56,6 +56,12 @@ def test_collector_normalizes_official_record() -> None:
     assert result.iloc[0]["strategy"] == "chance"
     assert result.iloc[0]["game"] == "chance_nacional"
     assert result.iloc[0]["number"] == 42
+
+
+def test_default_source_is_official_lottery_results_dataset() -> None:
+    source = load_sources()[0]
+
+    assert source.url.endswith("/resource/i3kx-3zps.json")
 
 
 def test_forecaster_trains_and_returns_bounded_prediction() -> None:
