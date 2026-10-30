@@ -64,6 +64,27 @@ def test_default_source_is_official_lottery_results_dataset() -> None:
     assert source.url.endswith("/resource/i3kx-3zps.json")
 
 
+def test_collector_normalizes_open_data_lottery_fields() -> None:
+    collector = LotteryDataCollector(sources=load_sources())
+
+    result = collector._normalize_records(
+        [
+            {
+                "fecha": "2026-10-09",
+                "loter_a": "Lotería de Medellín",
+                "n_mero": "1234",
+                "sorteo": "5000",
+            }
+        ],
+        collector.sources[0],
+    )
+
+    assert len(result) == 1
+    assert result.iloc[0]["strategy"] == "loteria"
+    assert result.iloc[0]["game"] == "loteria_de_medellin"
+    assert result.iloc[0]["number"] == 1234
+
+
 def test_forecaster_trains_and_returns_bounded_prediction() -> None:
     forecaster = LotteryForecaster(min_rows=8, random_state=7)
     models = forecaster.train_models(build_training_data())
