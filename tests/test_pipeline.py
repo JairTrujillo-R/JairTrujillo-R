@@ -28,9 +28,7 @@ def build_training_data(rows: int = 16) -> pd.DataFrame:
 
 
 def test_collector_normalizes_official_record() -> None:
-    collector = LotteryDataCollector(
-        sources=[DataSource(name="test", url="https://example.test")]
-    )
+    collector = LotteryDataCollector(sources=[DataSource(name="test", url="https://example.test")])
 
     result = collector._normalize_records(
         [
@@ -151,9 +149,7 @@ def test_end_to_end_training_persistence_and_evaluation(tmp_path: Path) -> None:
         model_version = repository.create_model_version(
             "chance", "chance_nacional", model_path, len(data), "test", []
         )
-        repository.save_predictions(
-            predictions, {("chance", "chance_nacional"): model_version}
-        )
+        repository.save_predictions(predictions, {("chance", "chance_nacional"): model_version})
         actual = predictions.iloc[0]["predicted_number"]
         repository.save_official_results(
             pd.DataFrame(

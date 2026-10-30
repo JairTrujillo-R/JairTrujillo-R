@@ -293,7 +293,9 @@ def notify_command(db_path: Path) -> int:
                 repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "sent", "ok")
                 sent += 1
             except (OSError, smtplib.SMTPException) as exc:
-                repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "failed", str(exc))
+                repository.mark_alert(
+                    int(hit["prediction_id"]), settings.recipient, "failed", str(exc)
+                )
     finally:
         repository.close()
     print(f"Alertas enviadas: {sent}")

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import math
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import pickle
-import math
 
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -56,8 +56,12 @@ class LotteryForecaster:
             model.fit(X, y)
 
             last_row = features_df.iloc[-1]
-            min_number = int(pd.to_numeric(group.get("min_number", pd.Series([0])), errors="coerce").min())
-            max_number = int(pd.to_numeric(group.get("max_number", pd.Series([9999])), errors="coerce").max())
+            min_number = int(
+                pd.to_numeric(group.get("min_number", pd.Series([0])), errors="coerce").min()
+            )
+            max_number = int(
+                pd.to_numeric(group.get("max_number", pd.Series([9999])), errors="coerce").max()
+            )
             min_number = max(0, min_number)
             max_number = max(min_number, max_number)
             frequency_counts = (
@@ -87,7 +91,9 @@ class LotteryForecaster:
                 frequency=str(group["frequency"].mode().iloc[0])
                 if "frequency" in group and not group["frequency"].mode().empty
                 else "daily",
-                draw_weekdays=tuple(sorted(pd.to_datetime(group["draw_date"]).dt.day_of_week.unique())),
+                draw_weekdays=tuple(
+                    sorted(pd.to_datetime(group["draw_date"]).dt.day_of_week.unique())
+                ),
                 draw_month_days=tuple(sorted(pd.to_datetime(group["draw_date"]).dt.day.unique())),
             )
 
@@ -130,7 +136,9 @@ class LotteryForecaster:
             )
             prediction = float(trained.model.predict(features)[0])
             probabilities = self._build_probability_distribution(trained, prediction)
-            top_candidates = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[:top_k]
+            top_candidates = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[
+                :top_k
+            ]
             best_number, best_probability = top_candidates[0]
             rows.append(
                 {
@@ -183,7 +191,9 @@ class LotteryForecaster:
         data["draw_date"] = pd.to_datetime(data["draw_date"])
         data = data.sort_values("draw_date")
         data["min_number"] = pd.to_numeric(data.get("min_number", 0), errors="coerce").fillna(0)
-        data["max_number"] = pd.to_numeric(data.get("max_number", 9999), errors="coerce").fillna(9999)
+        data["max_number"] = pd.to_numeric(data.get("max_number", 9999), errors="coerce").fillna(
+            9999
+        )
         data["day_of_week"] = data["draw_date"].dt.day_of_week
         data["day_of_month"] = data["draw_date"].dt.day
         data["month"] = data["draw_date"].dt.month
