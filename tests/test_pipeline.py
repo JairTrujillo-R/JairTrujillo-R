@@ -29,7 +29,16 @@ def build_training_data(rows: int = 16) -> pd.DataFrame:
 
 
 def test_collector_normalizes_official_record() -> None:
-    collector = LotteryDataCollector(sources=[DataSource(name="test", url="https://example.test")])
+    collector = LotteryDataCollector(
+        sources=[
+            DataSource(
+                name="test",
+                url="https://example.test",
+                default_strategy="loteria",
+                default_game="loteria_medellin",
+            )
+        ]
+    )
 
     result = collector._normalize_records(
         [
@@ -40,7 +49,7 @@ def test_collector_normalizes_official_record() -> None:
                 "numero_ganador": "0042",
             }
         ],
-        "test",
+        collector.sources[0],
     )
 
     assert result.iloc[0]["draw_date"] == pd.Timestamp("2026-01-02")

@@ -44,6 +44,13 @@ Este repositorio ahora incluye un pipeline base en Python para:
 - `/src/lottery_pipeline/modeling.py`: entrenamiento y predicción.
 - `/src/lottery_pipeline/cli.py`: interfaz de línea de comandos.
 
+La ingesta usa la API Socrata de Datos Abiertos (`/resource/{dataset}.json`).
+La fuente inicial configurada es el histórico de resultados de la Lotería de
+Medellín (`4w3i-wxax`), cuyos campos `fecha`, `n_mero`, `sorteo` y `serie` se
+normalizan al esquema interno. Si Datos Abiertos cambia el identificador, se
+puede reemplazar la fuente mediante `LOTTERY_SOURCES_JSON` sin modificar el
+código.
+
 ### Uso rápido
 
 ```bash
