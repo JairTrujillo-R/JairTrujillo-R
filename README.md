@@ -47,13 +47,13 @@ Este repositorio ahora incluye un pipeline base en Python para:
 ### Uso rápido
 
 ```bash
-pip install -r requirements.txt
+uv sync --group dev
 
 # 1) Extraer datos
-PYTHONPATH=src python -m lottery_pipeline collect --limit 50000
+PYTHONPATH=src uv run python -m lottery_pipeline collect --limit 50000
 
 # 2) Entrenar y predecir
-PYTHONPATH=src python -m lottery_pipeline train --min-rows 30
+PYTHONPATH=src uv run python -m lottery_pipeline train --min-rows 30
 ```
 
 ### Archivos de salida
