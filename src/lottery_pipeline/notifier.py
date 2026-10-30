@@ -19,7 +19,7 @@ class SMTPSettings:
     @staticmethod
     def from_env() -> SMTPSettings:
         host = os.getenv("LOTTERY_SMTP_HOST", "")
-        port = int(os.getenv("LOTTERY_SMTP_PORT", "587"))
+        port = int(os.getenv("LOTTERY_SMTP_PORT") or "587")
         username = os.getenv("LOTTERY_SMTP_USERNAME", "")
         secret_value = os.getenv("LOTTERY_SMTP_PASSWORD", "")
         sender = os.getenv("LOTTERY_SMTP_SENDER", "")
