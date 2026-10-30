@@ -49,7 +49,7 @@ class LotteryRepository:
                 source TEXT,
                 raw_payload TEXT,
                 loaded_at_utc TEXT NOT NULL,
-                UNIQUE(draw_date, strategy, game, actual_number)
+                UNIQUE(draw_date, strategy, game)
             );
 
             CREATE TABLE IF NOT EXISTS model_versions (
@@ -105,6 +105,22 @@ class LotteryRepository:
             );
             """
         )
+        self.conn.execute(
+            """
+            DELETE FROM official_results
+            WHERE id NOT IN (
+                SELECT MAX(id)
+                FROM official_results
+                GROUP BY draw_date, strategy, game
+            )
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_official_results_draw
+            ON official_results(draw_date, strategy, game)
+            """
+        )
         self.conn.commit()
 
     def seed_catalog(self) -> None:
@@ -142,9 +158,14 @@ class LotteryRepository:
         for _, row in df.iterrows():
             cursor = self.conn.execute(
                 """
-                INSERT OR IGNORE INTO official_results(
+                INSERT INTO official_results(
                     draw_date, strategy, game, actual_number, source, raw_payload, loaded_at_utc
                 ) VALUES(?,?,?,?,?,?,?)
+                ON CONFLICT(draw_date, strategy, game) DO UPDATE SET
+                    actual_number=excluded.actual_number,
+                    source=excluded.source,
+                    raw_payload=excluded.raw_payload,
+                    loaded_at_utc=excluded.loaded_at_utc
                 """,
                 (
                     pd.to_datetime(row["draw_date"]).date().isoformat(),
@@ -246,12 +267,15 @@ class LotteryRepository:
             top_candidates = json.loads(row["top_candidates_json"])
             predicted_number = int(row["predicted_number"])
             actual_number = int(row["actual_number"])
-            prob = float(row["predicted_probability"])
             is_hit = int(predicted_number == actual_number)
-            top_numbers = [int(item["number"]) for item in top_candidates]
+            candidate_probabilities = {
+                int(item["number"]): float(item["probability"]) for item in top_candidates
+            }
+            top_numbers = list(candidate_probabilities)
             hit_at_3 = int(actual_number in top_numbers[:3])
             hit_at_5 = int(actual_number in top_numbers[:5])
-            brier = (1.0 - prob) ** 2 if is_hit else (prob**2)
+            actual_probability = candidate_probabilities.get(actual_number, 0.0)
+            brier = (1.0 - actual_probability) ** 2
             self.conn.execute(
                 """
                 INSERT OR REPLACE INTO evaluations(
@@ -321,4 +345,3 @@ class LotteryRepository:
             ),
         )
         self.conn.commit()
-

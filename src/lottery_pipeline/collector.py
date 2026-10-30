@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from pathlib import Path
 from typing import Any
@@ -139,7 +139,7 @@ class LotteryDataCollector:
 
 def build_metadata_snapshot(output_path: str | Path) -> Path:
     snapshot = {
-        "created_at_utc": datetime.utcnow().isoformat(),
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "sources": [asdict(source) for source in load_sources()],
     }
     path = Path(output_path)

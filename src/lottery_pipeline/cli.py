@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import smtplib
 from pathlib import Path
 
 import pandas as pd
@@ -276,24 +277,25 @@ def notify_command(db_path: Path) -> int:
         return 0
 
     repository = LotteryRepository(db_path)
-    pending_hits = repository.pending_hit_alerts()
     notifier = EmailNotifier(settings)
     sent = 0
-    for hit in pending_hits:
-        subject = f"🎯 Acierto de lotería: {hit['strategy']} - {hit['game']}"
-        body = (
-            f"Predicción acertada para {hit['prediction_date']}.\n"
-            f"Juego: {hit['strategy']} / {hit['game']}\n"
-            f"Número predicho: {hit['predicted_number']}\n"
-            f"Número real: {hit['actual_number']}\n"
-        )
-        try:
-            notifier.send_hit_alert(subject=subject, body=body)
-            repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "sent", "ok")
-            sent += 1
-        except Exception as exc:
-            repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "failed", str(exc))
-    repository.close()
+    try:
+        for hit in repository.pending_hit_alerts():
+            subject = f"🎯 Acierto de lotería: {hit['strategy']} - {hit['game']}"
+            body = (
+                f"Predicción acertada para {hit['prediction_date']}.\n"
+                f"Juego: {hit['strategy']} / {hit['game']}\n"
+                f"Número predicho: {hit['predicted_number']}\n"
+                f"Número real: {hit['actual_number']}\n"
+            )
+            try:
+                notifier.send_hit_alert(subject=subject, body=body)
+                repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "sent", "ok")
+                sent += 1
+            except (OSError, smtplib.SMTPException) as exc:
+                repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "failed", str(exc))
+    finally:
+        repository.close()
     print(f"Alertas enviadas: {sent}")
     return sent
 
