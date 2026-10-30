@@ -60,6 +60,10 @@ jobs:
         run: |
           uv run python -c "import sqlite3; c=sqlite3.connect('data/lottery.db'); print(c.execute('SELECT COUNT(*), MIN(draw_date), MAX(draw_date) FROM official_results').fetchone())"
 
+      - name: Validate official API schema
+        run: |
+          uv run python -c "import requests; r=requests.get('https://www.datos.gov.co/resource/i3kx-3zps.json', params={'$limit': 1}, timeout=30); r.raise_for_status(); row=r.json()[0]; print(sorted(row)); print({k: row[k] for k in row if k in {'fecha','loter_a','n_mero','numero','tipo_de_premio'}})"
+
       - name: Send test email
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test_email }}
         env:
