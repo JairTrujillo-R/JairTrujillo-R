@@ -24,6 +24,9 @@ class TrainedModel:
     latest_number: int
     latest_lag7: float
     latest_mean7: float
+    frequency: str
+    draw_weekdays: tuple[int, ...]
+    draw_month_days: tuple[int, ...]
 
 
 class LotteryForecaster:
@@ -81,6 +84,11 @@ class LotteryForecaster:
                 latest_number=int(last_row["number"]),
                 latest_lag7=float(last_row["lag7"]),
                 latest_mean7=float(last_row["mean7"]),
+                frequency=str(group["frequency"].mode().iloc[0])
+                if "frequency" in group and not group["frequency"].mode().empty
+                else "daily",
+                draw_weekdays=tuple(sorted(pd.to_datetime(group["draw_date"]).dt.day_of_week.unique())),
+                draw_month_days=tuple(sorted(pd.to_datetime(group["draw_date"]).dt.day.unique())),
             )
 
         return models
@@ -106,6 +114,8 @@ class LotteryForecaster:
         target_date = pd.to_datetime(prediction_date or pd.Timestamp.utcnow().normalize())
         rows: list[dict[str, Any]] = []
         for trained in models.values():
+            if not self._is_scheduled_date(trained, target_date):
+                continue
             features = pd.DataFrame(
                 [
                     {
@@ -135,7 +145,29 @@ class LotteryForecaster:
                     ],
                 }
             )
-        return pd.DataFrame(rows).sort_values(["strategy", "game"])
+        predictions = pd.DataFrame(rows)
+        if predictions.empty:
+            return pd.DataFrame(
+                columns=[
+                    "prediction_date",
+                    "strategy",
+                    "game",
+                    "predicted_number",
+                    "predicted_probability",
+                    "top_candidates",
+                ]
+            )
+        return predictions.sort_values(["strategy", "game"])
+
+    @staticmethod
+    def _is_scheduled_date(trained: TrainedModel, target_date: pd.Timestamp) -> bool:
+        if trained.frequency == "daily":
+            return True
+        if trained.frequency == "weekly":
+            return target_date.day_of_week in trained.draw_weekdays
+        if trained.frequency == "monthly":
+            return target_date.day in trained.draw_month_days
+        return True
 
     @staticmethod
     def save_models(models: dict[tuple[str, str], TrainedModel], output_path: str | Path) -> Path:

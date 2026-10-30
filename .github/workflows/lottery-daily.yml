@@ -51,7 +51,7 @@ jobs:
           LOTTERY_ALERT_RECIPIENT: ${{ secrets.LOTTERY_ALERT_RECIPIENT }}
         run: |
           python -m lottery_pipeline init-db --db-path data/lottery.db
-          python -m lottery_pipeline run-cycle --db-path data/lottery.db --frequency daily --limit 50000 --min-rows 30
+          python -m lottery_pipeline run-cycle --db-path data/lottery.db --frequency all --limit 50000 --min-rows 30
 
       - name: Upload artifacts
         if: always()

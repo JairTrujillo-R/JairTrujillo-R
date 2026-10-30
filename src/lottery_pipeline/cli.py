@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--frequency",
         type=str,
         default=None,
-        choices=["daily", "weekly", "monthly"],
+        choices=["daily", "weekly", "monthly", "all"],
         help="Filtra por frecuencia de juego.",
     )
 
@@ -101,7 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--frequency",
         type=str,
         default=None,
-        choices=["daily", "weekly", "monthly"],
+        choices=["daily", "weekly", "monthly", "all"],
         help="Filtra por frecuencia de juego.",
     )
 
@@ -149,8 +149,8 @@ def build_parser() -> argparse.ArgumentParser:
     cycle_parser.add_argument(
         "--frequency",
         type=str,
-        default="daily",
-        choices=["daily", "weekly", "monthly"],
+        default="all",
+        choices=["daily", "weekly", "monthly", "all"],
         help="Frecuencia del ciclo.",
     )
     cycle_parser.add_argument(
@@ -182,7 +182,7 @@ def collect_command(
     df = collector.collect(limit=limit)
     if df.empty:
         raise RuntimeError("No se obtuvieron datos válidos desde las fuentes configuradas.")
-    if frequency:
+    if frequency and frequency != "all":
         df = df[df["frequency"] == frequency]
     if df.empty:
         raise RuntimeError("No hay datos para la frecuencia solicitada.")
@@ -220,7 +220,7 @@ def train_command(
     if "max_number" not in df.columns:
         df["max_number"] = 9999
     df = df.dropna(subset=["draw_date", "number", "strategy", "game"])
-    if frequency:
+    if frequency and frequency != "all":
         df = df[df["frequency"] == frequency]
     if df.empty:
         raise RuntimeError("No hay datos válidos para entrenar.")

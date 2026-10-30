@@ -66,6 +66,20 @@ def test_forecaster_trains_and_returns_bounded_prediction() -> None:
     assert sum(item["probability"] for item in row["top_candidates"]) <= 1
 
 
+def test_forecaster_skips_games_not_scheduled_for_target_date() -> None:
+    data = build_training_data(16)
+    data["frequency"] = "weekly"
+    data["draw_date"] = pd.date_range("2026-01-03", periods=16, freq="7D")
+    forecaster = LotteryForecaster(min_rows=8)
+    models = forecaster.train_models(data)
+
+    predictions = forecaster.predict_next_day(
+        models, prediction_date=pd.Timestamp("2026-01-04"), top_k=3
+    )
+
+    assert predictions.empty
+
+
 def test_repository_evaluates_one_result_per_draw(tmp_path: Path) -> None:
     repository = LotteryRepository(tmp_path / "lottery.db")
     try:
