@@ -65,7 +65,12 @@ def test_default_source_is_official_lottery_results_dataset() -> None:
 
 
 def test_collector_normalizes_open_data_lottery_fields() -> None:
-    collector = LotteryDataCollector(sources=load_sources())
+    source = DataSource(
+        name="datos_abiertos_colombia_loterias",
+        url="https://www.datos.gov.co/resource/i3kx-3zps.json",
+        default_strategy="loteria",
+    )
+    collector = LotteryDataCollector(sources=[source])
 
     result = collector._normalize_records(
         [
@@ -76,7 +81,7 @@ def test_collector_normalizes_open_data_lottery_fields() -> None:
                 "sorteo": "5000",
             }
         ],
-        collector.sources[0],
+        source,
     )
 
     assert len(result) == 1
