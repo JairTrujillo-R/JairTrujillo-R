@@ -54,6 +54,12 @@ jobs:
           restore-keys: |
             lottery-pipeline-state-
 
+      - name: Show historical coverage
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run python -c "import sqlite3; c=sqlite3.connect('data/lottery.db'); print(c.execute('SELECT COUNT(*), MIN(draw_date), MAX(draw_date) FROM official_results').fetchone())"
+
       - name: Send test email
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test_email }}
         env:

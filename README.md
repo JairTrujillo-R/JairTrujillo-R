@@ -70,6 +70,11 @@ PYTHONPATH=src uv run python -m lottery_pipeline train --min-rows 30
 - `models/lottery_models.pkl`: modelos entrenados por estrategia/juego.
 - `predictions/daily_predictions.csv`: predicción para la fecha objetivo.
 
+El repositorio incluye `data/lottery.db` como semilla histórica. La copia
+actual contiene 1.024 resultados de Lotería de Medellín entre 2007-01-05 y
+2026-10-09. El workflow diario restaura y actualiza esa base mediante cache;
+los nuevos resultados se consolidan con `ON CONFLICT`, sin borrar el histórico.
+
 ### Datos, frecuencia y aprendizaje
 
 Cada modelo se entrena por separado para cada combinación `strategy/game`, usando
