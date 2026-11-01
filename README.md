@@ -33,7 +33,7 @@ I have been learning about data analysis for over three years. I began with data
 Este repositorio ahora incluye un pipeline base en Python para:
 
 1. **Extraer datos** desde una fuente oficial de datos abiertos en Colombia.
-2. **Normalizar resultados** en un esquema común (`draw_date`, `strategy`, `game`, `number`).
+2. **Normalizar resultados** en un esquema común (`draw_date`, `strategy`, `game`, `number`, `prize_type`).
 3. **Entrenar modelos por estrategia/juego**.
 4. **Generar predicción diaria** por cada estrategia disponible.
 
@@ -61,6 +61,9 @@ PYTHONPATH=src uv run python -m lottery_pipeline collect --limit 50000
 
 # 2) Entrenar y predecir
 PYTHONPATH=src uv run python -m lottery_pipeline train --min-rows 30
+
+# 3) Validar como futuro sobre histórico (walk-forward)
+PYTHONPATH=src uv run python -m lottery_pipeline backtest --min-rows 30
 ```
 
 ### Archivos de salida
@@ -78,17 +81,83 @@ los nuevos resultados se consolidan con `ON CONFLICT`, sin borrar el histórico.
 ### Datos, frecuencia y aprendizaje
 
 Cada modelo se entrena por separado para cada combinación `strategy/game`, usando
-el histórico normalizado de resultados de ese juego: fecha, número ganador,
+el histórico del número principal de cada sorteo: fecha, número ganador,
 rezagos (`lag1`, `lag7`), media móvil de siete sorteos y variables de calendario.
+Los premios secundarios se conservan en SQLite y no se duplican como observaciones
+de entrenamiento; se usan para evaluar si el número predicho coincide con cualquier
+premio publicado.
 Los juegos diarios, semanales y mensuales no se mezclan. La predicción solo se
 genera cuando la fecha objetivo coincide con el patrón de sorteos observado.
 
 El modelo actual es supervisado (`RandomForestRegressor` con suavizado
-histórico), no aprendizaje reforzado. Las evaluaciones calculan acierto,
-`hit@3`, `hit@5` y Brier por predicción; sirven para monitorear cada lotería,
-pero no se usan como una falsa señal de recompensa. En sorteos aleatorios no
-existe una acción controlable ni una recompensa estable que justifique afirmar
-que un agente puede aprender una política ganadora.
+histórico), no aprendizaje reforzado. Cada predicción conserva una probabilidad
+histórica para su combinación de estrategia y juego. Las evaluaciones calculan
+probabilidad observada de acertar cualquier premio, el premio mayor, premios
+secundarios, `hit@3`, `hit@5` y Brier por estrategia/juego; sirven para monitorear
+calibración y rendimiento, pero no se usan como una falsa señal de recompensa.
+En sorteos aleatorios no existe una acción controlable ni una recompensa estable
+que justifique afirmar que un agente puede aprender una política ganadora.
+
+La fuente oficial identifica categorías como `Mayor` y `Seco`. El pipeline compara
+el número predicho con el número publicado en cada categoría y registra los tipos
+coincidentes. Esto evalúa aciertos exactos; reglas adicionales como aproximaciones,
+series o terminales requieren que la fuente publique esos campos y una definición
+oficial de la regla antes de calcularlas.
+
+### Comunicación y aprendizaje
+
+Las alertas se envían en HTML y texto plano. Un correo agrupa todos los aciertos
+pendientes de la ejecución, muestra una tabla con fecha, estrategia, juego, número
+y categoría del premio, y separa el resumen entre premios mayores y secundarios.
+Esto evita enviar un correo por cada coincidencia y conserva compatibilidad con
+clientes que no renderizan HTML.
+
+El sistema actual no es aprendizaje reforzado: no existe una acción sobre el
+sorteo ni una recompensa que pueda modificar sus probabilidades reales. Los
+“pesos” del modelo son: la frecuencia histórica suavizada de cada número y un
+factor exponencial según su distancia a la predicción del Random Forest. El
+Random Forest sí aprende pesos internos de sus árboles, pero no se actualizan con
+los aciertos del correo. La mejora correcta es recalibrar y comparar estrategias
+con validación temporal, registrando Brier y probabilidades de premio por juego;
+no aumentar artificialmente la probabilidad después de un acierto aislado.
+
+### Evaluación arquitectónica y evolución a múltiples modelos
+
+La arquitectura actual es adecuada como MVP reproducible: ingesta oficial,
+normalización, SQLite, entrenamiento por `strategy/game`, evaluación y alerta.
+Sus límites principales son el tamaño desigual del histórico, la ausencia de
+validación temporal automatizada, una sola familia de modelo y la falta de una
+calibración formal de probabilidades. En un sorteo diseñado para ser aleatorio,
+un modelo más complejo no implica una ventaja predictiva; la métrica prioritaria
+debe ser la calibración fuera de muestra, no la cantidad de aciertos aparentes.
+
+La implementación actual ya incluye un ensamble supervisado por juego, ejecutado
+en paralelo:
+
+1. Generar características sin fuga temporal: calendario, rezagos, frecuencias
+   con ventana móvil y datos de cada categoría de premio.
+2. Entrenar modelos independientes: `RandomForest`, `ExtraTrees`,
+   `HistGradientBoosting` y `MLPRegressor` opcional cuando el histórico alcanza
+   el umbral configurado.
+3. Evaluarlos con validación walk-forward. Los pesos del ensamble se obtienen
+   solo de las predicciones históricas fuera de muestra, usando Brier o log loss;
+   nunca del último acierto ni del correo enviado.
+4. Calibrar las probabilidades con `CalibratedClassifierCV` o isotonic cuando
+   exista suficiente histórico. Para cada candidato se conserva modelo, versión,
+   ventana de entrenamiento, métrica y peso.
+5. Promediar las distribuciones de probabilidad por juego, normalizarlas y
+   publicar también la predicción de cada modelo, la predicción combinada y la
+   incertidumbre. Si el ensamble no supera la línea base en walk-forward, se
+   mantiene la línea base.
+
+La ejecución paralela aísla fallos por modelo mediante `concurrent.futures`,
+limita el paralelismo de cada estimador y guarda artefactos versionados. El
+comando `backtest` ejecuta la validación walk-forward sobre el CSV histórico.
+Todavía quedan como siguientes mejoras formales la calibración isotónica, una
+tabla SQLite específica de métricas por modelo y una línea base uniforme
+explícita. XGBoost/LightGBM, PyTorch o una red temporal profunda solo deben
+incorporarse si el backtesting demuestra una mejora estable; con el histórico
+actual una red profunda tiene alto riesgo de sobreajuste.
 
 
 ## <img src="https://media2.giphy.com/media/QssGEmpkyEOhBCb7e1/giphy.gif?cid=ecf05e47a0n3gi1bfqntqmob8g9aid1oyj2wr3ds3mg700bl&rid=giphy.gif" width="30px" style="vertical-align: middle;"> 🛠️ Technical Stack
