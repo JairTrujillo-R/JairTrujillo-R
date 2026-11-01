@@ -12,13 +12,16 @@ class DataSource:
     url: str
     records_key: str | None = None
     enabled: bool = True
+    default_strategy: str | None = None
+    default_game: str | None = None
 
 
 OFFICIAL_SOURCES: list[DataSource] = [
     DataSource(
         name="datos_abiertos_colombia_loterias",
-        url="https://www.datos.gov.co/resource/xjzv-xx6x.json",
+        url="https://www.datos.gov.co/resource/i3kx-3zps.json",
         records_key=None,
+        default_strategy="loteria",
     ),
     DataSource(
         name="datos_abiertos_colombia_chance",
@@ -63,6 +66,8 @@ def load_sources() -> list[DataSource]:
                 url=str(url).strip(),
                 records_key=item.get("records_key"),
                 enabled=True,
+                default_strategy=item.get("default_strategy"),
+                default_game=item.get("default_game"),
             )
         )
     return sources
