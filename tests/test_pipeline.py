@@ -77,8 +77,8 @@ def test_collector_normalizes_open_data_lottery_fields() -> None:
             {
                 "fecha": "2026-10-09",
                 "loter_a": "Lotería de Medellín",
-                "n_mero": "1234",
-                "sorteo": "5000",
+                "numero_billete_ganador": "1234",
+                "tipo_de_premio": "Mayor",
             }
         ],
         source,
@@ -88,6 +88,29 @@ def test_collector_normalizes_open_data_lottery_fields() -> None:
     assert result.iloc[0]["strategy"] == "loteria"
     assert result.iloc[0]["game"] == "loteria_de_medellin"
     assert result.iloc[0]["number"] == 1234
+
+
+def test_collector_ignores_non_major_prizes() -> None:
+    source = DataSource(
+        name="datos_abiertos_colombia_loterias",
+        url="https://www.datos.gov.co/resource/i3kx-3zps.json",
+        default_strategy="loteria",
+    )
+    collector = LotteryDataCollector(sources=[source])
+
+    result = collector._normalize_records(
+        [
+            {
+                "fecha_del_sorteo": "2026-10-09",
+                "loter_a": "Loteria del Quindio",
+                "numero_billete_ganador": "9876",
+                "tipo_de_premio": "Seco",
+            }
+        ],
+        source,
+    )
+
+    assert result.empty
 
 
 def test_forecaster_trains_and_returns_bounded_prediction() -> None:

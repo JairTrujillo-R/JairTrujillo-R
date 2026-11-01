@@ -21,6 +21,7 @@ OFFICIAL_SOURCES: list[DataSource] = [
         name="datos_abiertos_colombia_loterias",
         url="https://www.datos.gov.co/resource/i3kx-3zps.json",
         records_key=None,
+        default_strategy="loteria",
     ),
     DataSource(
         name="datos_abiertos_colombia_chance",

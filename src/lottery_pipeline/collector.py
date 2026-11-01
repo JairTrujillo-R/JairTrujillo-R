@@ -127,6 +127,7 @@ class LotteryDataCollector:
                 [
                     "numero",
                     "n_mero",
+                    "numero_billete_ganador",
                     "numero_ganador",
                     "resultado",
                     "winning_number",
@@ -136,6 +137,9 @@ class LotteryDataCollector:
             )
 
             if draw_date is None or number is None:
+                continue
+            prize_type = self._pick_value(record, ["tipo_de_premio", "tipo_premio", "prize_type"])
+            if prize_type and self._clean_label(prize_type) != "mayor":
                 continue
 
             parsed_date = pd.to_datetime(draw_date, errors="coerce")
