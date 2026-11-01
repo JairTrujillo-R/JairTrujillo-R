@@ -9,8 +9,8 @@ import pandas as pd
 
 from .collector import LotteryDataCollector, build_metadata_snapshot
 from .db import LotteryRepository
-from .modeling import LotteryForecaster
-from .notifier import EmailNotifier, SMTPSettings
+from .ensemble import LotteryEnsembleForecaster
+from .notifier import EmailNotifier, SMTPSettings, render_hit_email
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -121,6 +121,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fecha máxima de evaluación (YYYY-MM-DD).",
     )
 
+    backtest_parser = subparsers.add_parser(
+        "backtest", help="Valida modelos con entrenamiento expansivo sobre histórico."
+    )
+    backtest_parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("data/raw/lottery_results.csv"),
+        help="CSV de entrada con datos normalizados.",
+    )
+    backtest_parser.add_argument("--min-rows", type=int, default=30)
+
     notify_parser = subparsers.add_parser(
         "notify", help="Envía correo cuando haya aciertos sin alerta previa."
     )
@@ -139,6 +150,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Destinatario de la prueba. Por defecto usa LOTTERY_ALERT_RECIPIENT.",
+    )
+    test_email_parser.add_argument(
+        "--scenario",
+        type=str,
+        default="single",
+        choices=["single", "multiple", "secondary", "all"],
+        help="Escenario a enviar; all envía los tres correos.",
     )
 
     cycle_parser = subparsers.add_parser(
@@ -235,7 +253,7 @@ def train_command(
     if df.empty:
         raise RuntimeError("No hay datos válidos para entrenar.")
 
-    forecaster = LotteryForecaster(min_rows=min_rows)
+    forecaster = LotteryEnsembleForecaster(min_rows=min_rows)
     models = forecaster.train_models(df)
     if not models:
         raise RuntimeError(
@@ -245,7 +263,7 @@ def train_command(
     forecast_date = pd.to_datetime(prediction_date) if prediction_date else None
     predictions = forecaster.predict_next_day(models, prediction_date=forecast_date)
 
-    LotteryForecaster.save_models(models, models_output)
+    forecaster.save_models(models, models_output)
     repository = LotteryRepository(db_path)
     model_version_map: dict[tuple[str, str], int] = {}
     features = ["day_of_week", "day_of_month", "month", "lag1", "lag7", "mean7"]
@@ -256,8 +274,8 @@ def train_command(
             game=game,
             model_path=models_output,
             data_rows=group_rows,
-            algorithm="RandomForestRegressor+BayesianSmoothing",
-            features=features,
+            algorithm="Ensemble(RF+ExtraTrees+HistGradientBoosting+MLP?)",
+            features=features + ["walk_forward_weights", "brier_validation"],
         )
     repository.save_predictions(predictions, model_version_map=model_version_map)
     repository.close()
@@ -275,9 +293,51 @@ def evaluate_command(db_path: Path, evaluation_date: str | None) -> pd.DataFrame
     if evaluations.empty:
         print("No hubo predicciones pendientes para evaluar.")
     else:
-        hits = int(evaluations["is_hit"].sum())
-        print(f"Evaluaciones realizadas: {len(evaluations)} | aciertos: {hits}")
+        hits = int(evaluations["any_prize_hit"].sum())
+        major_hits = int(evaluations["major_prize_hit"].sum())
+        secondary_hits = int(evaluations["secondary_prize_hit"].sum())
+        print(
+            f"Evaluaciones: {len(evaluations)} | cualquier premio: {hits} | "
+            f"premio mayor: {major_hits} | secundarios: {secondary_hits}"
+        )
+        summary = (
+            evaluations.groupby(["strategy", "game"], as_index=False)
+            .agg(
+                predictions=("prediction_id", "count"),
+                any_prize_probability=("any_prize_hit", "mean"),
+                major_prize_probability=("major_prize_hit", "mean"),
+                secondary_prize_probability=("secondary_prize_hit", "mean"),
+                mean_brier_score=("brier_score", "mean"),
+            )
+            .sort_values(["strategy", "game"])
+        )
+        print(summary.to_string(index=False))
     return evaluations
+
+
+def backtest_command(input_path: Path, min_rows: int) -> pd.DataFrame:
+    if not input_path.exists():
+        raise FileNotFoundError(f"No existe el archivo de entrada: {input_path}")
+    df = pd.read_csv(input_path)
+    if df.empty:
+        raise RuntimeError("El archivo de entrada no contiene datos.")
+    df["draw_date"] = pd.to_datetime(df["draw_date"], errors="coerce")
+    df["number"] = pd.to_numeric(df["number"], errors="coerce")
+    df = df.dropna(subset=["draw_date", "number", "strategy", "game"])
+    results = LotteryEnsembleForecaster(min_rows=min_rows).walk_forward_evaluate(df)
+    if results.empty:
+        print("No hubo suficientes observaciones para backtesting.")
+    else:
+        print(
+            results.groupby(["strategy", "game"], as_index=False)
+            .agg(
+                observations=("actual_number", "count"),
+                mean_brier_score=("brier_score", "mean"),
+                mean_probability=("actual_probability", "mean"),
+            )
+            .to_string(index=False)
+        )
+    return results
 
 
 def notify_command(db_path: Path) -> int:
@@ -290,29 +350,31 @@ def notify_command(db_path: Path) -> int:
     notifier = EmailNotifier(settings)
     sent = 0
     try:
-        for hit in repository.pending_hit_alerts():
-            subject = f"🎯 Acierto de lotería: {hit['strategy']} - {hit['game']}"
-            body = (
-                f"Predicción acertada para {hit['prediction_date']}.\n"
-                f"Juego: {hit['strategy']} / {hit['game']}\n"
-                f"Número predicho: {hit['predicted_number']}\n"
-                f"Número real: {hit['actual_number']}\n"
+        hits = repository.pending_hit_alerts()
+        if hits:
+            body, html_body = render_hit_email(hits)
+            subject = "🎯 " + (
+                "Acierto de lotería" if len(hits) == 1 else f"{len(hits)} aciertos de lotería"
             )
             try:
-                notifier.send_hit_alert(subject=subject, body=body)
-                repository.mark_alert(int(hit["prediction_id"]), settings.recipient, "sent", "ok")
-                sent += 1
+                notifier.send_hit_alert(subject=subject, body=body, html_body=html_body)
+                for hit in hits:
+                    repository.mark_alert(
+                        int(hit["prediction_id"]), settings.recipient, "sent", "ok"
+                    )
+                    sent += 1
             except (OSError, smtplib.SMTPException) as exc:
-                repository.mark_alert(
-                    int(hit["prediction_id"]), settings.recipient, "failed", str(exc)
-                )
+                for hit in hits:
+                    repository.mark_alert(
+                        int(hit["prediction_id"]), settings.recipient, "failed", str(exc)
+                    )
     finally:
         repository.close()
     print(f"Alertas enviadas: {sent}")
     return sent
 
 
-def test_email_command(recipient: str | None) -> None:
+def test_email_command(recipient: str | None, scenario: str) -> None:
     settings = SMTPSettings.from_env()
     target = recipient or settings.recipient
     if not settings.is_complete():
@@ -331,14 +393,65 @@ def test_email_command(recipient: str | None) -> None:
             use_tls=settings.use_tls,
         )
     )
-    notifier.send_hit_alert(
-        subject="Prueba de alertas - Lottery Pipeline",
-        body=(
-            "Este es un correo de prueba del pipeline de loterías.\n"
-            "La configuración SMTP de producción respondió correctamente."
-        ),
-    )
-    print(f"Correo de prueba enviado a: {target}")
+    scenarios = {
+        "single": [
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_medellin",
+                "predicted_number": 1234,
+                "matched_prize_types": ["mayor"],
+            }
+        ],
+        "multiple": [
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_medellin",
+                "predicted_number": 1234,
+                "matched_prize_types": ["mayor"],
+            },
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_bogota",
+                "predicted_number": 5678,
+                "matched_prize_types": ["seco"],
+            },
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_del_valle",
+                "predicted_number": 9012,
+                "matched_prize_types": ["seco", "aproximacion"],
+            },
+        ],
+        "secondary": [
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_del_quindio",
+                "predicted_number": 2222,
+                "matched_prize_types": ["seco"],
+            },
+            {
+                "prediction_date": "2026-11-02",
+                "strategy": "loteria",
+                "game": "loteria_del_tolima",
+                "predicted_number": 3333,
+                "matched_prize_types": ["terminal", "aproximacion"],
+            },
+        ],
+    }
+    selected = list(scenarios) if scenario == "all" else [scenario]
+    for selected_scenario in selected:
+        body, html_body = render_hit_email(scenarios[selected_scenario])
+        notifier.send_hit_alert(
+            subject=f"Prueba real de correo - escenario {selected_scenario}",
+            body=body,
+            html_body=html_body,
+        )
+        print(f"Correo de prueba enviado: {selected_scenario} -> {target}")
 
 
 def run_cycle_command(
@@ -399,6 +512,10 @@ def main() -> None:
         )
         return
 
+    if args.command == "backtest":
+        backtest_command(input_path=args.input, min_rows=args.min_rows)
+        return
+
     if args.command == "evaluate":
         evaluate_command(db_path=args.db_path, evaluation_date=args.date)
         return
@@ -408,7 +525,7 @@ def main() -> None:
         return
 
     if args.command == "test-email":
-        test_email_command(recipient=args.recipient)
+        test_email_command(recipient=args.recipient, scenario=args.scenario)
         return
 
     run_cycle_command(

@@ -10,6 +10,16 @@ on:
         required: false
         type: boolean
         default: false
+      test_email_scenario:
+        description: "Escenario: single, multiple, secondary o all"
+        required: false
+        type: choice
+        options:
+          - single
+          - multiple
+          - secondary
+          - all
+        default: all
 
 jobs:
   run-daily:
@@ -74,7 +84,7 @@ jobs:
           LOTTERY_SMTP_PASSWORD: ${{ secrets.LOTTERY_SMTP_PASSWORD }}
           LOTTERY_SMTP_SENDER: ${{ secrets.LOTTERY_SMTP_SENDER }}
           LOTTERY_ALERT_RECIPIENT: coremprejair@gmail.com
-        run: uv run python -m lottery_pipeline test-email --recipient coremprejair@gmail.com
+        run: uv run python -m lottery_pipeline test-email --recipient coremprejair@gmail.com --scenario "${{ inputs.test_email_scenario }}"
 
       - name: Run daily cycle
         if: ${{ github.event_name != 'workflow_dispatch' || !inputs.send_test_email }}
