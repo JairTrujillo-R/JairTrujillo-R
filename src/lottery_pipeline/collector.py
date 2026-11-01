@@ -55,6 +55,7 @@ class LotteryDataCollector:
                     "min_number",
                     "max_number",
                     "number",
+                    "prize_type",
                     "source",
                     "raw_payload",
                 ]
@@ -139,8 +140,7 @@ class LotteryDataCollector:
             if draw_date is None or number is None:
                 continue
             prize_type = self._pick_value(record, ["tipo_de_premio", "tipo_premio", "prize_type"])
-            if prize_type and self._clean_label(prize_type) != "mayor":
-                continue
+            prize_type_clean = self._clean_label(prize_type or "mayor")
 
             parsed_date = pd.to_datetime(draw_date, errors="coerce")
             parsed_number = pd.to_numeric(str(number).strip(), errors="coerce")
@@ -160,6 +160,7 @@ class LotteryDataCollector:
                     "min_number": catalog_item.min_number if catalog_item else 0,
                     "max_number": catalog_item.max_number if catalog_item else 9999,
                     "number": int(parsed_number),
+                    "prize_type": prize_type_clean,
                     "source": source.name,
                     "raw_payload": str(record),
                 }
@@ -170,7 +171,7 @@ class LotteryDataCollector:
             return df
 
         df["draw_date"] = pd.to_datetime(df["draw_date"])
-        df = df.drop_duplicates(subset=["draw_date", "strategy", "game", "number"])
+        df = df.drop_duplicates(subset=["draw_date", "strategy", "game", "prize_type", "number"])
         return df
 
 

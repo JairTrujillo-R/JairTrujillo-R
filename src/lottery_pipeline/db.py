@@ -25,6 +25,7 @@ class LotteryRepository:
         self.conn.close()
 
     def init_db(self) -> None:
+        self._migrate_official_results_table()
         self.conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS game_catalog (
@@ -45,11 +46,12 @@ class LotteryRepository:
                 draw_date TEXT NOT NULL,
                 strategy TEXT NOT NULL,
                 game TEXT NOT NULL,
+                prize_type TEXT NOT NULL DEFAULT 'mayor',
                 actual_number INTEGER NOT NULL,
                 source TEXT,
                 raw_payload TEXT,
                 loaded_at_utc TEXT NOT NULL,
-                UNIQUE(draw_date, strategy, game)
+                UNIQUE(draw_date, strategy, game, prize_type, actual_number)
             );
 
             CREATE TABLE IF NOT EXISTS model_versions (
@@ -87,6 +89,10 @@ class LotteryRepository:
                 brier_score REAL NOT NULL,
                 hit_at_3 INTEGER NOT NULL,
                 hit_at_5 INTEGER NOT NULL,
+                any_prize_hit INTEGER NOT NULL DEFAULT 0,
+                major_prize_hit INTEGER NOT NULL DEFAULT 0,
+                secondary_prize_hit INTEGER NOT NULL DEFAULT 0,
+                matched_prize_types TEXT NOT NULL DEFAULT '[]',
                 evaluated_at_utc TEXT NOT NULL,
                 FOREIGN KEY(prediction_id) REFERENCES predictions(id)
             );
@@ -111,17 +117,69 @@ class LotteryRepository:
             WHERE id NOT IN (
                 SELECT MAX(id)
                 FROM official_results
-                GROUP BY draw_date, strategy, game
+                GROUP BY draw_date, strategy, game, prize_type, actual_number
             )
             """
         )
         self.conn.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS uq_official_results_draw
-            ON official_results(draw_date, strategy, game)
+            DROP INDEX IF EXISTS uq_official_results_draw
             """
         )
+        self._ensure_column("evaluations", "any_prize_hit", "INTEGER NOT NULL DEFAULT 0")
+        self._ensure_column("evaluations", "major_prize_hit", "INTEGER NOT NULL DEFAULT 0")
+        self._ensure_column("evaluations", "secondary_prize_hit", "INTEGER NOT NULL DEFAULT 0")
+        self._ensure_column("evaluations", "matched_prize_types", "TEXT NOT NULL DEFAULT '[]'")
         self.conn.commit()
+
+    def _migrate_official_results_table(self) -> None:
+        table = self.conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='official_results'"
+        ).fetchone()
+        if not table:
+            return
+        columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(official_results)").fetchall()
+        }
+        if "prize_type" in columns:
+            return
+        self.conn.execute("ALTER TABLE official_results RENAME TO official_results_legacy")
+        self.conn.execute(
+            """
+            CREATE TABLE official_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                draw_date TEXT NOT NULL,
+                strategy TEXT NOT NULL,
+                game TEXT NOT NULL,
+                prize_type TEXT NOT NULL DEFAULT 'mayor',
+                actual_number INTEGER NOT NULL,
+                source TEXT,
+                raw_payload TEXT,
+                loaded_at_utc TEXT NOT NULL,
+                UNIQUE(draw_date, strategy, game, prize_type, actual_number)
+            )
+            """
+        )
+        self.conn.execute(
+            """
+            INSERT INTO official_results(
+                draw_date, strategy, game, prize_type, actual_number,
+                source, raw_payload, loaded_at_utc
+            )
+            SELECT draw_date, strategy, game, 'mayor', actual_number,
+                   source, raw_payload, loaded_at_utc
+            FROM official_results_legacy
+            """
+        )
+        self.conn.execute("DROP TABLE official_results_legacy")
+
+    def _ensure_column(self, table: str, column: str, definition: str) -> None:
+        columns = {
+            row["name"] for row in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in columns:
+            self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def seed_catalog(self) -> None:
         for item in GAME_CATALOG:
@@ -160,9 +218,10 @@ class LotteryRepository:
             cursor = self.conn.execute(
                 """
                 INSERT INTO official_results(
-                    draw_date, strategy, game, actual_number, source, raw_payload, loaded_at_utc
-                ) VALUES(?,?,?,?,?,?,?)
-                ON CONFLICT(draw_date, strategy, game) DO UPDATE SET
+                    draw_date, strategy, game, prize_type, actual_number,
+                    source, raw_payload, loaded_at_utc
+                ) VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(draw_date, strategy, game, prize_type, actual_number) DO UPDATE SET
                     actual_number=excluded.actual_number,
                     source=excluded.source,
                     raw_payload=excluded.raw_payload,
@@ -172,6 +231,7 @@ class LotteryRepository:
                     pd.to_datetime(row["draw_date"]).date().isoformat(),
                     str(row["strategy"]),
                     str(row["game"]),
+                    str(row.get("prize_type", "mayor")),
                     int(row["number"]),
                     str(row.get("source", "")),
                     str(row.get("raw_payload", "")),
@@ -254,7 +314,7 @@ class LotteryRepository:
         rows = self.conn.execute(
             """
             SELECT p.id AS prediction_id, p.prediction_date, p.strategy, p.game, p.predicted_number,
-                   p.predicted_probability, p.top_candidates_json, r.actual_number
+                   p.predicted_probability, p.top_candidates_json, r.actual_number, r.prize_type
             FROM predictions p
             JOIN official_results r
               ON r.draw_date = p.prediction_date
@@ -268,25 +328,43 @@ class LotteryRepository:
 
         evaluations: list[dict[str, Any]] = []
         utc_now = datetime.now(UTC).isoformat()
+        grouped_rows: dict[int, list[sqlite3.Row]] = {}
         for row in rows:
+            grouped_rows.setdefault(int(row["prediction_id"]), []).append(row)
+
+        for result_rows in grouped_rows.values():
+            row = result_rows[0]
             top_candidates = json.loads(row["top_candidates_json"])
             predicted_number = int(row["predicted_number"])
-            actual_number = int(row["actual_number"])
-            is_hit = int(predicted_number == actual_number)
+            major_rows = [item for item in result_rows if item["prize_type"] == "mayor"]
+            canonical_row = major_rows[0] if major_rows else row
+            actual_number = int(canonical_row["actual_number"])
+            matched_types = sorted(
+                {
+                    str(item["prize_type"])
+                    for item in result_rows
+                    if predicted_number == int(item["actual_number"])
+                }
+            )
+            is_hit = int(bool(matched_types))
+            major_prize_hit = int("mayor" in matched_types)
+            secondary_prize_hit = int(any(prize != "mayor" for prize in matched_types))
             candidate_probabilities = {
                 int(item["number"]): float(item["probability"]) for item in top_candidates
             }
             top_numbers = list(candidate_probabilities)
             hit_at_3 = int(actual_number in top_numbers[:3])
             hit_at_5 = int(actual_number in top_numbers[:5])
-            actual_probability = candidate_probabilities.get(actual_number, 0.0)
+            scored_number = predicted_number if is_hit else actual_number
+            actual_probability = candidate_probabilities.get(scored_number, 0.0)
             brier = (1.0 - actual_probability) ** 2
             self.conn.execute(
                 """
                 INSERT OR REPLACE INTO evaluations(
                     prediction_id, draw_date, actual_number, is_hit, brier_score,
-                    hit_at_3, hit_at_5, evaluated_at_utc
-                ) VALUES(?,?,?,?,?,?,?,?)
+                    hit_at_3, hit_at_5, any_prize_hit, major_prize_hit,
+                    secondary_prize_hit, matched_prize_types, evaluated_at_utc
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     int(row["prediction_id"]),
@@ -296,6 +374,10 @@ class LotteryRepository:
                     float(brier),
                     hit_at_3,
                     hit_at_5,
+                    is_hit,
+                    major_prize_hit,
+                    secondary_prize_hit,
+                    json.dumps(matched_types),
                     utc_now,
                 ),
             )
@@ -314,6 +396,10 @@ class LotteryRepository:
                     "brier_score": float(brier),
                     "hit_at_3": bool(hit_at_3),
                     "hit_at_5": bool(hit_at_5),
+                    "any_prize_hit": bool(is_hit),
+                    "major_prize_hit": bool(major_prize_hit),
+                    "secondary_prize_hit": bool(secondary_prize_hit),
+                    "matched_prize_types": matched_types,
                 }
             )
 
@@ -324,7 +410,7 @@ class LotteryRepository:
         return self.conn.execute(
             """
             SELECT p.id AS prediction_id, p.prediction_date, p.strategy, p.game,
-                   p.predicted_number, e.actual_number
+                   p.predicted_number, e.actual_number, e.matched_prize_types
             FROM predictions p
             JOIN evaluations e ON e.prediction_id = p.id
             LEFT JOIN alerts a

@@ -49,6 +49,7 @@ class LotteryForecaster:
 
         models: dict[tuple[str, str], TrainedModel] = {}
         for (strategy, game), group in df.groupby(["strategy", "game"], dropna=False):
+            group = self._training_rows(group)
             features_df = self._build_features(group.sort_values("draw_date"))
             if len(features_df) < self.min_rows:
                 continue
@@ -105,6 +106,17 @@ class LotteryForecaster:
             )
 
         return models
+
+    @staticmethod
+    def _training_rows(group: pd.DataFrame) -> pd.DataFrame:
+        """Use the principal draw number once; retain secondary prizes for scoring."""
+        if "prize_type" not in group.columns:
+            return group
+        prize_types = group["prize_type"].fillna("mayor").astype(str).str.lower()
+        major = group[prize_types == "mayor"]
+        if not major.empty:
+            return major.drop_duplicates(subset=["draw_date"])
+        return group.drop_duplicates(subset=["draw_date"])
 
     def predict_next_day(
         self,
